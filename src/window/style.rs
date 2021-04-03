@@ -2,7 +2,7 @@
 
 use gtk::prelude::*;
 
-pub fn style(window: &gtk::ApplicationWindow) {
+pub fn style(window: &gtk::ApplicationWindow) -> String {
 	let provider = gtk::CssProvider::new();
 
 	let mut s = String::new();
@@ -27,4 +27,8 @@ pub fn style(window: &gtk::ApplicationWindow) {
 	provider.load_from_data(s.as_bytes()).expect("Failed to load CSS.");
 	gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().expect("Error initializing GTK CSS provider."),
 		&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+
+	let color = button.get_style_context().get_color(gtk::StateFlags::NORMAL);
+	// The 180 as opposed to 256 is a dirty hack to make the color darker... If you have a better way, let me know.
+	colorsys::Rgb::new(color.red * 180.0, color.green * 180.0, color.blue * 180.0, None).to_hex_string()
 }

@@ -1,1 +1,6 @@
 @define-color border_color darker(@background_color);
+@define-color deemphasized_color darker(@foreground_color);
+
+.deemphasized {
+	color: @deemphasized_color;
+}

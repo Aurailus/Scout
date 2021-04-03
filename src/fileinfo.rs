@@ -30,7 +30,10 @@ impl FileInfo {
 		let file_type = if metadata.file_type().is_dir() { FileType::Directory } else { FileType::File(
 			mime_guess::from_path(&path).first().and_then(|mime| Some(mime.to_string())).get_or_insert(String::new()).clone()) };
 
-		let size: usize = metadata.len().try_into().unwrap();
+		let size: usize = match &file_type {
+			FileType::File(_) => metadata.len().try_into().unwrap(),
+			FileType::Directory => std::fs::read_dir(&path).and_then(|res| Ok(res.count())).unwrap_or(0)
+		};
 
 		let icon = match &file_type {
 			FileType::File(mime_type) => FileInfo::icon_name_from_mime_type(&mime_type),

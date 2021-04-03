@@ -5,27 +5,30 @@ use crate::shared::Shared;
 use crate::fileinfo::{ FileInfo, FileType };
 
 pub struct App {
+	deemphasized_color: String,
+
 	location_history_head: usize,
 	location_history: Vec<std::path::PathBuf>,
 
 	location_view: gtk::Box,
-	tree_store: gtk::TreeStore,
-
 	location_entry: gtk::Entry,
 	navigate_back_button: gtk::Button,
-	navigate_forward_button: gtk::Button
+	navigate_forward_button: gtk::Button,
+
+	list_tree_store: gtk::TreeStore,
+	completion_tree_store: gtk::ListStore
 }
 
+static SIZE_SUFFIXES: [ &str; 4 ] = [ "bytes", "KB", "MB", "GB" ];
+
 impl App {
-	fn add_column<T: IsA<gtk::CellRenderer>>(tree_view: &gtk::TreeView, cell: T, expand: bool, resize: bool, title: Option<&str>, attr: &str, ind: i32) {
+	fn add_column<T: IsA<gtk::CellRenderer>>(tree_view: &gtk::TreeView, cell: T, title: Option<&str>, attr: &str, ind: i32) {
 		let column = gtk::TreeViewColumn::new();
 
-		column.pack_start(&cell, expand);
-		column.set_expand(expand);
+		column.pack_start(&cell, false);
 		if let Some(title) = title { column.set_title(title); }
 		column.add_attribute(&cell, attr, ind);
-		column.set_resizable(resize);
-		column.set_reorderable(resize);
+		column.set_resizable(true);
 		tree_view.append_column(&column);
 	}
 
@@ -43,7 +46,7 @@ impl App {
 		};
 
 		window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), gdk::WindowHints::MIN_SIZE);
-		style::style(&window);
+		let deemphasized_color = style::style(&window);
 
 		let header = gtk::HeaderBar::new();
 		header.set_show_close_button(true);
@@ -56,7 +59,7 @@ impl App {
 
 		let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		button_box.get_style_context().add_class("linked");
-		header_box.pack_start(&button_box, false, false, 4);
+		header_box.pack_start(&button_box, false, false, 3);
 
 		let navigate_back_button = gtk::Button::from_icon_name(Some("go-previous-symbolic"), gtk::IconSize::Button);
 		button_box.pack_start(&navigate_back_button, false, false, 0);
@@ -64,10 +67,35 @@ impl App {
 		let navigate_forward_button = gtk::Button::from_icon_name(Some("go-next-symbolic"), gtk::IconSize::Button);
 		button_box.pack_start(&navigate_forward_button, false, false, 0);
 
+		// icon-name, name, path_str, path
+		let completion_tree_store = gtk::ListStore::new(&[String::static_type(), String::static_type(), String::static_type(), String::static_type() ]);
+
+		let completion_area = gtk::CellAreaBox::new();
+
+		let completion_icon_renderer = gtk::CellRendererPixbuf::new();
+		completion_icon_renderer.set_property_stock_size(gtk::IconSize::Menu);
+		completion_icon_renderer.set_padding(6, 3);
+		completion_area.add(&completion_icon_renderer);
+		completion_area.add_attribute(&completion_icon_renderer, "icon-name", 0);
+
+		let completion_name_renderer = gtk::CellRendererText::new();
+		completion_area.add(&completion_name_renderer);
+		completion_area.add_attribute(&completion_name_renderer, "text", 1);
+
+		let completion_path_renderer = gtk::CellRendererText::new();
+		completion_path_renderer.set_alignment(1.0, 0.0);
+		completion_path_renderer.set_padding(6, 3);
+		completion_area.add(&completion_path_renderer);
+		completion_area.add_attribute(&completion_path_renderer, "markup", 2);
+
+		let entry_completion = gtk::EntryCompletionBuilder::new().model(&completion_tree_store)
+			.text_column(3).inline_completion(true).inline_selection(true).popup_single_match(false).cell_area(&completion_area).build();
+
 		let location_entry = gtk::Entry::new();
 		location_entry.set_icon_from_icon_name(gtk::EntryIconPosition::Primary, Some("folder-symbolic"));
 		location_entry.set_icon_from_icon_name(gtk::EntryIconPosition::Secondary, Some("view-refresh-symbolic"));
 		location_entry.set_icon_activatable(gtk::EntryIconPosition::Secondary, true);
+		location_entry.set_completion(Some(&entry_completion));
 		header_box.pack_start(&location_entry, true, true, 0);
 
 		let paned = gtk::Paned::new(gtk::Orientation::Horizontal);
@@ -83,35 +111,50 @@ impl App {
 
 		let location_view = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		location_view.set_hexpand(true);
-		location_scroller.add(&location_view);
 
 		let tree_view = gtk::TreeView::new();
-		location_view.pack_start(&tree_view, true, true, 0);
+		location_scroller.add(&tree_view);
 		
 		// icon-name, name, type, size, modified, path
-		let tree_store = gtk::TreeStore::new(&[ String::static_type(), String::static_type(),
+		let list_tree_store = gtk::TreeStore::new(&[ String::static_type(), String::static_type(),
 			String::static_type(), String::static_type(), String::static_type(), String::static_type() ]);
-		tree_view.set_model(Some(&tree_store));
+		tree_view.set_model(Some(&list_tree_store));
 
-		let icon_view = gtk::CellRendererPixbuf::new();
-		icon_view.set_property_stock_size(gtk::IconSize::LargeToolbar);
-		App::add_column(&tree_view, icon_view, 										false, false, None,              "icon-name", 0);
-		App::add_column(&tree_view, gtk::CellRendererText::new(), true,  true,  Some(&"Name"),     "text",      1);
-		App::add_column(&tree_view, gtk::CellRendererText::new(), false, true,  Some(&"Type"),     "text",      2);
-		App::add_column(&tree_view, gtk::CellRendererText::new(), false, true,  Some(&"Size"),     "text",      3);
-		App::add_column(&tree_view, gtk::CellRendererText::new(), false, true,  Some(&"Modified"), "text",      4);
+		let name_column = gtk::TreeViewColumn::new();
+		name_column.set_resizable(true);
+		name_column.set_expand(true);
+		name_column.set_title(&"             Name");
+
+		let name_icon_renderer = gtk::CellRendererPixbuf::new();
+		name_icon_renderer.set_property_stock_size(gtk::IconSize::LargeToolbar);
+		name_column.pack_start(&name_icon_renderer, false);
+
+		let name_text_renderer = gtk::CellRendererText::new();
+		name_column.pack_start(&name_text_renderer, true);
+
+		name_column.add_attribute(&name_icon_renderer, "icon-name", 0);
+		name_column.add_attribute(&name_text_renderer, "text", 1);
+		tree_view.append_column(&name_column);
+
+		App::add_column(&tree_view, gtk::CellRendererText::new(), Some(&"Type"),     "markup", 2);
+		App::add_column(&tree_view, gtk::CellRendererText::new(), Some(&"Size"),     "markup", 3);
+		App::add_column(&tree_view, gtk::CellRendererText::new(), Some(&"Modified"), "markup", 4);
 
 		window.show_all();
 
 		let app = Shared::new(App {
+			deemphasized_color,
+
 			location_history: vec![],
 			location_history_head: 0,
 
 			location_view,
-			tree_store: tree_store.clone(),
 			location_entry: location_entry.clone(),
 			navigate_back_button: navigate_back_button.clone(),
-			navigate_forward_button: navigate_forward_button.clone()
+			navigate_forward_button: navigate_forward_button.clone(),
+
+			list_tree_store: list_tree_store.clone(),
+			completion_tree_store: completion_tree_store.clone()
 		});
 
 		{
@@ -127,9 +170,9 @@ impl App {
 
 		{
 			let app_clone = app.clone();
-			let tree_store = tree_store.clone();
+			let list_tree_store = list_tree_store.clone();
 			tree_view.connect_row_activated(move |_, path, _| app_clone.borrow_mut().push_location(&std::path::Path::new(
-				&tree_store.get_value(&tree_store.get_iter(path).unwrap(), 5).downcast::<String>().unwrap().get().unwrap())));
+				&list_tree_store.get_value(&list_tree_store.get_iter(path).unwrap(), 5).downcast::<String>().unwrap().get().unwrap())));
 		}
 
 		app.borrow_mut().push_location(location);
@@ -193,23 +236,64 @@ impl App {
 		entries
 	}
 
+	fn format_size(file_type: &FileType, size: usize) -> String {
+		match file_type {
+			FileType::File(_) => {
+				let mut suffix_ind = 0;
+				let mut size: f32 = size as f32;
+				while size > 1024.0 && suffix_ind < 4 { size /= 1024.0; suffix_ind += 1; }
+				if suffix_ind == 0 { std::format!("{:.0} {}", size, SIZE_SUFFIXES[suffix_ind]) }
+				else { std::format!("{:.1} {}", size, SIZE_SUFFIXES[suffix_ind]) }
+			},
+			FileType::Directory => std::format!("{} items", size),
+		}
+	}
+
+	fn format_deemphasized(&self, string: &str) -> String {
+		[ "<span foreground=\"", &self.deemphasized_color, "\">", string, "</span>" ].join("")
+	}
+
 	fn location_changed(&mut self) -> std::io::Result<()> {
 		self.navigate_back_button.set_sensitive(self.has_back());
 		self.navigate_forward_button.set_sensitive(self.has_forward());
 
 		let location = &self.location_history[self.location_history_head];
-		self.location_entry.set_text(&location.to_string_lossy());
+		let mut location_string = location.to_string_lossy().to_string();
+		location_string.push_str("/");
+		self.location_entry.set_text(&location_string);
 
 		let hide: std::vec::Vec<String> = std::fs::read_to_string(location.join(std::path::Path::new(".hidden")))
 			.and_then(|file| Ok(file.split("\n").map(|line| line.trim().to_owned()).filter(|line| !line.is_empty()).collect())).ok().unwrap_or(vec![]);
 
-		self.tree_store.clear();
+		self.list_tree_store.clear();
 
 		for entry in self.get_sorted_dir_infos(std::fs::read_dir(&location)?) {
 			if entry.name.starts_with(".") || entry.name.ends_with("~") || hide.contains(&entry.name) { continue; }
 
-			self.tree_store.insert_with_values(None, None, &[ 0, 1, 2, 3, 4, 5 ],
-				&[ &entry.icon, &entry.name, &"Folder", &entry.size.to_string(), &"Yesterday", &entry.path.to_string_lossy().to_string() ]);
+			let parent = self.list_tree_store.insert_with_values(None, None, &[ 0, 1, 2, 3, 4, 5 ], &[
+				&entry.icon, &entry.name,
+				&self.format_deemphasized("Folder"),
+				&self.format_deemphasized(&App::format_size(&entry.file_type, entry.size)),
+				&self.format_deemphasized("Yesterday"),
+				&entry.path.to_string_lossy().to_string()
+			]);
+
+			if entry.file_type == FileType::Directory && entry.size > 0 {
+				self.list_tree_store.insert_with_values(Some(&parent), None, &[ 0, 1 ], &[ &"window-minimize-symbolic", &"..." ]); }
+		};
+
+		self.completion_tree_store.clear();
+
+		for entry in self.get_sorted_dir_infos(std::fs::read_dir(&location)?) {
+			if entry.name.starts_with(".") || entry.name.ends_with("~") ||
+				hide.contains(&entry.name) || entry.file_type != FileType::Directory { continue; }
+
+			let path = entry.path.to_string_lossy().to_string();
+			let path_styled = self.format_deemphasized(&path);
+
+			let mut icon = entry.icon.clone();
+			icon.push_str("-symbolic");
+			self.completion_tree_store.insert_with_values(None, &[ 0, 1, 2, 3 ], &[ &icon, &entry.name, &path_styled, &path ]);
 		};
 			
 		self.location_view.show_all();
