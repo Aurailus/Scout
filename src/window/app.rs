@@ -50,7 +50,6 @@ impl App {
 
 		let header = gtk::HeaderBar::new();
 		header.set_show_close_button(true);
-		header.set_decoration_layout(Some("icon:minimize,maximize,close"));
 		window.set_titlebar(Some(&header));
 
 		let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -119,6 +118,7 @@ impl App {
 		let list_tree_store = gtk::TreeStore::new(&[ String::static_type(), String::static_type(),
 			String::static_type(), String::static_type(), String::static_type(), String::static_type() ]);
 		tree_view.set_model(Some(&list_tree_store));
+		tree_view.get_selection().set_mode(gtk::SelectionMode::Multiple);
 
 		let name_column = gtk::TreeViewColumn::new();
 		name_column.set_resizable(true);
@@ -157,37 +157,61 @@ impl App {
 			completion_tree_store: completion_tree_store.clone()
 		});
 
-		{
-			let app_clone = app.clone();
-			location_entry.connect_activate(move |entry| app_clone.borrow_mut().push_location(std::path::Path::new(&entry.get_text())));
+		let app_clone = app.clone();
+		location_entry.connect_activate(move |entry| drop(app_clone.borrow_mut().push_location(std::path::Path::new(&entry.get_text()))));
 
-			let app_clone = app.clone();
-			navigate_back_button.connect_clicked(move |_| drop(app_clone.borrow_mut().navigate_back()));
+		let app_clone = app.clone();
+		navigate_back_button.connect_clicked(move |_| drop(app_clone.borrow_mut().navigate_back()));
 
-			let app_clone = app.clone();
-			navigate_forward_button.connect_clicked(move |_| drop(app_clone.borrow_mut().navigate_forward()));
-		}
+		let app_clone = app.clone();
+		navigate_forward_button.connect_clicked(move |_| drop(app_clone.borrow_mut().navigate_forward()));
 
-		{
-			let app_clone = app.clone();
-			let list_tree_store = list_tree_store.clone();
-			tree_view.connect_row_activated(move |_, path, _| app_clone.borrow_mut().push_location(&std::path::Path::new(
-				&list_tree_store.get_value(&list_tree_store.get_iter(path).unwrap(), 5).downcast::<String>().unwrap().get().unwrap())));
-		}
+		let app_clone = app.clone();
+		let list_tree_store_clone = list_tree_store.clone();
+		tree_view.connect_row_activated(move |_, path, _| drop(app_clone.borrow_mut().path_activate(&std::path::Path::new(
+			&list_tree_store_clone.get_value(&list_tree_store_clone.get_iter(path).unwrap(), 5).downcast::<String>().unwrap().get().unwrap()))));
 
-		app.borrow_mut().push_location(location);
+		let app_clone = app.clone();
+		let list_tree_store_clone = list_tree_store.clone();
+		tree_view.connect_row_expanded(move |_, iter, path| {
+			let path = std::path::Path::new(&list_tree_store_clone.get_value(&list_tree_store.get_iter(path).unwrap(), 5)
+				.downcast::<String>().unwrap().get().unwrap()).to_owned();
+			drop(app_clone.borrow_mut().populate_view(&path, Some(&iter)));
+		});
+
+		let app_clone = app.clone();
+		window.connect_key_press_event(move |_, key| {
+			let alt = key.get_state().intersects(gdk::ModifierType::MOD1_MASK);
+			match key.get_keyval() {
+				gdk::keys::constants::Left => {
+					gtk::Inhibit(if !alt { false }
+					else { drop(app_clone.borrow_mut().navigate_back()); true })
+				},
+				gdk::keys::constants::Right => {
+					gtk::Inhibit(if !alt { false }
+					else { drop(app_clone.borrow_mut().navigate_forward()); true })
+				},
+				gdk::keys::constants::Up => {
+					gtk::Inhibit(if !alt { false }
+					else { drop(app_clone.borrow_mut().navigate_up()); true })
+				},
+				_ => gtk::Inhibit(false)
+			}
+		});
+
+		app.borrow_mut().push_location(location).unwrap();
 
 		app
 	}
 
-	pub fn push_location(&mut self, location: &std::path::Path) {
-		match self.try_push_location(location) {
-			Ok(_) => self.location_changed().unwrap(),
-			Err(_) => ()
-		}
+	fn path_activate(&mut self, location: &std::path::Path) -> Result<(), &'static str> {
+		let meta = std::fs::metadata(&location).or(Err("Path does not exist."))?;
+		if meta.is_dir() { self.push_location(location) }
+		else if open::that(location).is_err() { Err("Error opening the file.") }
+		else { Ok(()) }
 	}
 
-	fn try_push_location(&mut self, location: &std::path::Path) -> Result<(), &'static str> {
+	pub fn push_location(&mut self, location: &std::path::Path) -> Result<(), &'static str> {
 		let location = location.canonicalize().or(Err("Path is invalid."))?;
 		let meta = std::fs::metadata(&location).or(Err("Path does not exist."))?;
 		if !meta.is_dir() { return Err("Path is not a directory."); }
@@ -196,7 +220,23 @@ impl App {
 		self.location_history_head = self.location_history.len();
 		self.location_history.push(location.to_owned());
 
-		Ok(())
+		self.location_changed()
+	}
+
+	// pub fn has_up(&self) -> bool {
+	// 	let location = &self.location_history[self.location_history_head];
+	// 	location.parent().is_some()
+	// }
+
+	pub fn navigate_up(&mut self) -> Result<std::path::PathBuf, ()> {
+		let location = self.location_history[self.location_history_head].clone();
+		if let Some(up_location) = location.parent() {
+			match self. push_location(&up_location) {
+				Ok(_) => Ok(up_location.to_owned()),
+				Err(_) => Err(())
+			}
+		}
+		else { Err(()) }
 	}
 
 	pub fn has_back(&self) -> bool {
@@ -253,38 +293,23 @@ impl App {
 		[ "<span foreground=\"", &self.deemphasized_color, "\">", string, "</span>" ].join("")
 	}
 
-	fn location_changed(&mut self) -> std::io::Result<()> {
+	fn location_changed(&mut self) -> Result<(), &'static str> {
 		self.navigate_back_button.set_sensitive(self.has_back());
 		self.navigate_forward_button.set_sensitive(self.has_forward());
 
-		let location = &self.location_history[self.location_history_head];
+		let location = &self.location_history[self.location_history_head].clone();
 		let mut location_string = location.to_string_lossy().to_string();
 		location_string.push_str("/");
+
+		self.populate_view(&location, None)?;
+
+		self.completion_tree_store.clear();
 		self.location_entry.set_text(&location_string);
 
 		let hide: std::vec::Vec<String> = std::fs::read_to_string(location.join(std::path::Path::new(".hidden")))
 			.and_then(|file| Ok(file.split("\n").map(|line| line.trim().to_owned()).filter(|line| !line.is_empty()).collect())).ok().unwrap_or(vec![]);
 
-		self.list_tree_store.clear();
-
-		for entry in self.get_sorted_dir_infos(std::fs::read_dir(&location)?) {
-			if entry.name.starts_with(".") || entry.name.ends_with("~") || hide.contains(&entry.name) { continue; }
-
-			let parent = self.list_tree_store.insert_with_values(None, None, &[ 0, 1, 2, 3, 4, 5 ], &[
-				&entry.icon, &entry.name,
-				&self.format_deemphasized("Folder"),
-				&self.format_deemphasized(&App::format_size(&entry.file_type, entry.size)),
-				&self.format_deemphasized("Yesterday"),
-				&entry.path.to_string_lossy().to_string()
-			]);
-
-			if entry.file_type == FileType::Directory && entry.size > 0 {
-				self.list_tree_store.insert_with_values(Some(&parent), None, &[ 0, 1 ], &[ &"window-minimize-symbolic", &"..." ]); }
-		};
-
-		self.completion_tree_store.clear();
-
-		for entry in self.get_sorted_dir_infos(std::fs::read_dir(&location)?) {
+		for entry in self.get_sorted_dir_infos(std::fs::read_dir(&location).map_err(|_| "Failed to read directory.")?) {
 			if entry.name.starts_with(".") || entry.name.ends_with("~") ||
 				hide.contains(&entry.name) || entry.file_type != FileType::Directory { continue; }
 
@@ -297,6 +322,40 @@ impl App {
 		};
 			
 		self.location_view.show_all();
+		Ok(())
+	}
+
+	fn populate_view(&mut self, location: &std::path::Path, parent: Option<&gtk::TreeIter>) -> Result<(), &'static str> {
+		let mut first = None;
+		if let Some(iter) = self.list_tree_store.iter_children(parent) {
+			first = Some(iter.clone());
+			if self.list_tree_store.iter_next(&iter) {
+				while self.list_tree_store.remove(&iter) { /* do-while */ }
+			}
+		}
+
+		let hide: std::vec::Vec<String> = std::fs::read_to_string(location.join(std::path::Path::new(".hidden")))
+			.and_then(|file| Ok(file.split("\n").map(|line| line.trim().to_owned()).filter(|line| !line.is_empty()).collect())).ok().unwrap_or(vec![]);
+
+		for entry in self.get_sorted_dir_infos(location.read_dir().map_err(|_| "Failed to read directory.")?) {
+			if entry.name.starts_with(".") || entry.name.ends_with("~") || hide.contains(&entry.name) { continue; }
+
+			let time: chrono::DateTime<chrono::offset::Local> = entry.modified.into();
+
+			let parent = self.list_tree_store.insert_with_values(parent, None, &[ 0, 1, 2, 3, 4, 5 ], &[
+				&entry.icon, &entry.name,
+				&self.format_deemphasized("Folder"),
+				&self.format_deemphasized(&App::format_size(&entry.file_type, entry.size)),
+				&self.format_deemphasized(&format!("{}", time.format("%b %e, %R"))),
+				&entry.path.to_string_lossy().to_string()
+			]);
+
+			if entry.file_type == FileType::Directory && entry.size > 0 {
+				self.list_tree_store.insert_with_values(Some(&parent), None, &[ 0, 1 ], &[ &"window-minimize-symbolic", &"..." ]); }
+		};
+
+		if let Some(iter) = first { self.list_tree_store.remove(&iter); }
+
 		Ok(())
 	}
 }

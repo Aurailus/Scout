@@ -1,5 +1,6 @@
-use std::convert::TryInto;
 use gio::prelude::Cast;
+use std::convert::TryInto;
+use gtk::prelude::IconThemeExt;
 
 #[derive(PartialEq)]
 pub enum FileType {
@@ -11,6 +12,8 @@ pub struct FileInfo {
 	pub name: String,
 	pub path: std::path::PathBuf,
 	pub size: usize,
+
+	pub modified: std::time::SystemTime,
 
 	pub is_symlink: bool,
 	pub file_type: FileType,
@@ -43,6 +46,7 @@ impl FileInfo {
 		FileInfo {
 			name: name.to_owned(),
 			path: path.to_owned(),
+			modified: metadata.modified().unwrap(),
 			size, is_symlink,
 			file_type, icon
 		}
@@ -68,7 +72,24 @@ impl FileInfo {
 	pub fn icon_name_from_mime_type(mime_type: &str) -> String {
 		let content_type = gio::content_type_from_mime_type(&mime_type.to_string()).unwrap().to_string();
 		let icon_names = gio::content_type_get_icon(&content_type).unwrap().downcast::<gio::ThemedIcon>().unwrap().get_names();
-		if icon_names.len() == 0 { return "text-x-script".to_owned() }
-		return icon_names[0].to_string();
+ 
+		let mut icon = None;
+		let theme = gtk::IconTheme::get_default();
+		match theme {
+			Some(theme) => {
+				for name in &icon_names {
+					let name_str = name.to_string();
+					if theme.has_icon(&name_str) {
+						icon = Some(name_str);
+						break;
+					}
+				}
+			},
+			None => {
+				if icon_names.len() > 0 { icon = Some(icon_names[0].to_string()); }
+			}
+		}
+
+		icon.unwrap_or_else(|| "text-x-script".to_owned())
 	}
 }
