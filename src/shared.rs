@@ -1,9 +1,9 @@
-//Source: https://gist.github.com/stevedonovan/7e3a6d8c8921e3eff16c4b11ab82b8d7
+// Source: https://gist.github.com/stevedonovan/7e3a6d8c8921e3eff16c4b11ab82b8d7
 
 use std::fmt;
 use std::rc::Rc;
 use std::ops::Deref;
-use std::cell::{RefCell, RefMut};
+use std::cell::{ Ref, RefCell, RefMut };
 
 #[derive(Clone)]
 pub struct Shared<T> {
@@ -17,9 +17,9 @@ impl <T> Shared<T> {
 }
 
 impl <T> Shared<T> {
-	// pub fn borrow(&self) -> Ref<T> {
-	// 	self.v.borrow()
-	// }
+	pub fn borrow(&self) -> Ref<T> {
+		self.v.borrow()
+	}
 
 	pub fn borrow_mut(&self) -> RefMut<T> {
 		self.v.borrow_mut()

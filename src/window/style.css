@@ -1,6 +1,85 @@
 @define-color border_color darker(@background_color);
-@define-color deemphasized_color darker(@foreground_color);
+@define-color deemphasized_color alpha(@foreground_color, 0.65);
+@define-color icon_box_color alpha(lighter(lighter(lighter(lighter(@background_color)))), 0.2);
 
-.deemphasized {
+.app_container {
+	border-radius: 4px;;
+	/*margin: 16px;*/
+	/*box-shadow: 0px 2px 8px 0 rgba(0, 0, 0, 0.25), 0px 1px 4px 0 rgba(0, 0, 0, 0.25);*/
+}
+
+#results {
+	background-color: alpha(@background_accent_color, 0.8)
+}
+
+#preview {
+	border-left: 1px solid @border_color;
+	background-color: alpha(@background_color, 0.90)
+}
+
+#search {
+	padding: 12px;
+	border-radius: 8px 8px 0 0;
+	border: 1px solid transparent;
+	border-bottom: 1px solid @border_color;
+	background: alpha(@background_accent_color, 0.85);
+}
+
+.flat {
+	padding: 8px 4px;
+	border-radius: 0;
+	border: none;
+	outline: 0;
+}
+
+.flat:hover {
+	background-color: rgba(0, 0, 0, 0.075);
+}
+
+.flat:focus, #search:focus + box #results .result:first-child > button.flat:first-child, .flat:active {
+	background-color: rgba(0, 0, 0, 0.15);
+}
+
+.result_application_icon_box {
+	background-color: @icon_box_color;
+	border-radius: 4px;
+	padding: 4px;
+}
+
+.preview_application_icon_box {
+	background-color: @icon_box_color;
+	border-radius: 8px;
+	padding: 8px;
+}
+ 
+.category_label {
+	margin-top: 3px;
 	color: @deemphasized_color;
+}
+
+.action_button {
+	color: @deemphasized_color;
+	padding: 4px 0 4px 22px;
+}
+
+.secondary {
+	color: @deemphasized_color;
+}
+
+.action_icon_box {
+	background-color: @icon_box_color;
+	border-radius: 4px;
+	padding: 2px 3px;
+}
+
+.action_icon_box image {
+	padding-top: 1px;
+}
+
+.preview_application_button_box button {
+	padding: 6px 12px;
+}
+
+.preview_application_button_box button image {
+	-gtk-icon-transform: scale(0.84);
 }

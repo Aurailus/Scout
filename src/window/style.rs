@@ -2,7 +2,7 @@
 
 use gtk::prelude::*;
 
-pub fn style(window: &gtk::ApplicationWindow) -> String {
+pub fn style(window: &gtk::ApplicationWindow) {
 	let provider = gtk::CssProvider::new();
 
 	let mut s = String::new();
@@ -15,10 +15,10 @@ pub fn style(window: &gtk::ApplicationWindow) -> String {
 		s.push_str(";\n");
 	};
 
-	let row = gtk::ListBoxRow::new();
 	let button = gtk::Button::new();
-	add_color("scale_color", &row.get_style_context().get_background_color(gtk::StateFlags::SELECTED));
+	let entry = gtk::Entry::new();
 	add_color("background_color", &window.get_style_context().get_background_color(gtk::StateFlags::NORMAL));
+	add_color("background_accent_color", &entry.get_style_context().get_background_color(gtk::StateFlags::NORMAL));
 	add_color("foreground_color", &button.get_style_context().get_color(gtk::StateFlags::NORMAL));
 
 	let style = include_str!("./style.css");
@@ -27,8 +27,4 @@ pub fn style(window: &gtk::ApplicationWindow) -> String {
 	provider.load_from_data(s.as_bytes()).expect("Failed to load CSS.");
 	gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().expect("Error initializing GTK CSS provider."),
 		&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
-
-	let color = button.get_style_context().get_color(gtk::StateFlags::NORMAL);
-	// The 180 as opposed to 256 is a dirty hack to make the color darker... If you have a better way, let me know.
-	colorsys::Rgb::new(color.red * 180.0, color.green * 180.0, color.blue * 180.0, None).to_hex_string()
 }
