@@ -81,7 +81,7 @@ impl ProgramResult {
 
 	pub fn find_all() -> Vec<Self> {
 		let mut search_paths: Vec<PathBuf> = vec![
-			"/home/auri/.local/share/applications".into(),
+			[ "/home/", &whoami::username(), "/.local/share/applications" ].join("").into(),
 			"/usr/share/applications".into(),
 			"/usr/local/share/applications".into()
 		];
@@ -237,6 +237,7 @@ impl ProgramResult {
 
 					let icon = gtk::Image::from_icon_name(Some("start-here-symbolic"), gtk::IconSize::Button);
 					icon.set_size_request(16, 16);
+					icon.set_pixel_size(16);
 					icon_box.pack_start(&icon, false, false, 0);
 
 					let action_label = gtk::Label::new(Some(&action.name));
@@ -302,11 +303,12 @@ impl SearchResult for ProgramResult {
 
 		let icon_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
 		icon_box.get_style_context().add_class("preview_application_icon_box");
-		icon_box.set_size_request(64, 64);
 		icon_box.set_halign(gtk::Align::Center);
+		icon_box.set_size_request(64, 64);
 		widget.pack_start(&icon_box, false, false, 24);
 
 		let icon = gtk::Image::from_icon_name(self.icon.as_ref().and_then(|s| Some(s.as_str())), gtk::IconSize::Dialog);
+		icon.set_pixel_size(64);
 		icon_box.pack_start(&icon, false, false, 0);
 
 		let category_label = gtk::Label::new(Some(&["<span size='small' weight='bold'>", &self.category, "</span>"].join("")));
@@ -348,11 +350,11 @@ impl SearchResult for ProgramResult {
 		button_box.set_valign(gtk::Align::End);
 		widget.pack_end(&button_box, false, false, 4);
 
-		let launch_button = gtk::Button::from_icon_name(Some("media-playback-start-symbolic"), gtk::IconSize::LargeToolbar);
+		let launch_button = gtk::Button::from_icon_name(Some("media-playback-start-symbolic"), gtk::IconSize::Button);
 		button_box.pack_start(&launch_button, false, false, 0);
-		let favorite_button = gtk::Button::from_icon_name(Some("emblem-favorite-symbolic"), gtk::IconSize::LargeToolbar);
+		let favorite_button = gtk::Button::from_icon_name(Some("emblem-favorite-symbolic"), gtk::IconSize::Button);
 		button_box.pack_start(&favorite_button, false, false, 0);
-		let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"), gtk::IconSize::LargeToolbar);
+		let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"), gtk::IconSize::Button);
 		button_box.pack_start(&edit_button, false, false, 0);
 
 		return widget.upcast();

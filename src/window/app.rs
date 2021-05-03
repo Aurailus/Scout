@@ -1,15 +1,20 @@
+use gio::prelude::*;
 use gtk::prelude::*;
 use glib::translate::{ ToGlib, FromGlib };
 
+use super::about;
 use super::style;
 use crate::shared::Shared;
 use crate::result::{ SearchResult, ProgramResult };
+
+static WIDTH: i32 = 700;
+static HEIGHT: i32 = 500;
 
 pub struct App {
 	window: gtk::ApplicationWindow,
 	search: gtk::Entry,
 	results: gtk::Box,
-	preview: gtk::Box,
+	preview: gtk::ScrolledWindow,
 
 	programs: Vec<ProgramResult>,
 	top_result: Option<Box<dyn SearchResult>>,
@@ -21,15 +26,8 @@ impl App {
 	pub fn new(app: &gtk::Application) -> Shared<Self> {
 		let window = gtk::ApplicationWindow::new(app);
 		window.set_icon_name(Some("system-search"));
-
-		let geom = gdk::Geometry {
-			min_width: 700, min_height: 500, max_width: 700, max_height: 500,
-			// Unused parameters, because for some reason gdk::Geometry doesn't provide Default >:(
-			base_width: -1, base_height: -1, width_inc: -1, height_inc: -1, min_aspect: 0.0, max_aspect: 0.0,
-			win_gravity: gdk::Gravity::Center
-		};
-
-		window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), gdk::WindowHints::MIN_SIZE | gdk::WindowHints::MAX_SIZE);
+		window.set_default_size(WIDTH, HEIGHT);
+		window.set_resizable(false);
 		style::style(&window);
 		window.get_style_context().add_class("Scout");
 		window.set_app_paintable(true);
@@ -43,10 +41,52 @@ impl App {
 		app_container.get_style_context().add_class("app_container");
 		window.add(&app_container);
 
+		let top_layout = gtk::Fixed::new();
+		top_layout.set_widget_name("top_layout");
+		app_container.pack_start(&top_layout, false, false, 0);
+
 		let search = gtk::Entry::new();
 		search.set_icon_from_icon_name(gtk::EntryIconPosition::Primary, Some("search-symbolic"));
 		search.set_widget_name("search");
-		app_container.pack_start(&search, false, false, 0);
+		search.set_hexpand(true);
+		search.set_size_request(WIDTH, 48);
+		top_layout.put(&search, 0, 0);
+
+		let profile = gtk::Button::new();
+		profile.set_widget_name("profile");
+		top_layout.put(&profile, WIDTH - 41, 7);
+
+		let dropdown = gtk::PopoverMenu::new();
+		dropdown.set_relative_to(Some(&profile));
+		dropdown.set_border_width(6);
+
+		let dropdown_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+		dropdown.add(&dropdown_box);
+
+		let greeting = gtk::ModelButton::new();
+		greeting.set_property_text(Some(&[ "<span weight='bold'>", &whoami::realname(), "</span>" ].join("")));
+		greeting.set_property_use_markup(true);
+		greeting.set_action_name(Some("_"));
+		dropdown_box.add(&greeting);
+			
+		dropdown_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 3);
+
+		let preferences = gtk::ModelButton::new();
+		preferences.set_property_text(Some("Preferences"));
+		preferences.set_action_name(Some("app.preferences"));
+		dropdown_box.add(&preferences);
+
+		let about = gtk::ModelButton::new();
+		about.set_property_text(Some("About Scout"));
+		about.set_action_name(Some("app.about"));
+		dropdown_box.add(&about);
+
+		dropdown_box.show_all();
+		profile.connect_clicked(move |_| dropdown.popup());
+
+		let profile_pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale("/var/lib/AccountsService/icons/auri", 32, 32, true).unwrap();
+		let profile_image = gtk::Image::from_pixbuf(Some(&profile_pixbuf));
+		profile.add(&profile_image);
 
 		let content_container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		app_container.pack_start(&content_container, true, true, 0);
@@ -60,13 +100,11 @@ impl App {
 		results.set_widget_name("results");
 		results_scroller.add(&results);
 
-		let preview_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
-		preview_scroller.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
-		content_container.pack_start(&preview_scroller, true, true, 0);
-
-		let preview = gtk::Box::new(gtk::Orientation::Vertical, 0);
+		let preview = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
+		preview.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
 		preview.set_widget_name("preview");
-		preview_scroller.add(&preview);
+		content_container.pack_start(&preview, true, true, 0);
+
 
 		set_visual(&window, None);
 		window.show_all();
@@ -81,6 +119,16 @@ impl App {
 			
 			top_result: None,
 			top_result_focus_id: None
+		});
+
+		let results_clone = results.clone();
+		search.connect_property_has_focus_notify(move |search| {
+			if search.has_focus() {
+				results_clone.get_style_context().add_class("pseudo_focus");
+				let adj = results_scroller.get_vadjustment().unwrap();
+				adj.set_value(adj.get_lower());
+			}
+			else { results_clone.get_style_context().remove_class("pseudo_focus"); }
 		});
 
 		let app_clone = app.clone();
@@ -106,6 +154,7 @@ impl App {
 		results.connect_key_press_event(move |_, key| {
 			let keyval = key.get_keyval();
 			let search = app_clone.borrow().search.clone();
+			
 			if keyval >= gdk::keys::constants::A && keyval <= gdk::keys::constants::z {
 				search.grab_focus();
 				search.emit_insert_at_cursor(&keyval.to_unicode().unwrap().to_string());
@@ -117,6 +166,13 @@ impl App {
 			}
 			gtk::Inhibit(false)
 		});
+		 
+		let actions = gio::SimpleActionGroup::new();
+		window.insert_action_group("app", Some(&actions));
+
+		let about = gio::SimpleAction::new("about", None);
+		about.connect_activate(|_, _| about::show_about());
+		actions.add_action(&about);
 
 		app
 	}
@@ -144,7 +200,7 @@ impl App {
 		self.top_result = match results.len() {
 			0 => None,
 			_ => {
-				self.preview.pack_start(&results[0].1.get_preview_widget(), true, true, 0);
+				self.preview.add(&results[0].1.get_preview_widget());
 
 				for (i, res) in results.iter().enumerate() {
 					res.1.set_first(i == 0);
