@@ -1,0 +1,1 @@
+rm target/debug/.cargo-lock; sass --watch src/style/main.sass src/style/.build.css --no-source-map & nodemon -e .rs,.sass -w src -x RUST_BACKTRACE=1 cargo run

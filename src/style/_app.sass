@@ -1,0 +1,61 @@
+@use 'def' as *
+
+.Scout
+	border-radius: 8px
+	#Header
+		#SearchEntry
+			border-radius: 8px 8px 0 0
+			border: 1px solid $c-neutral-000
+			background-color: $c-neutral-200
+
+		#ProfileButton
+			margin: 0
+			padding: 0
+
+			border-radius: 50%
+			outline-offset: 1px
+			-gtk-outline-radius: 50%
+			border: 1px solid $c-neutral-000
+
+	#ProfileDropdown separator
+		background-color: $c-neutral-300
+
+	#Content
+		border: 1px solid $c-neutral-000
+		border-radius: 0 0 8px 8px
+		border-top: none
+
+		#ResultsFrame
+			border-radius: 0 0 0 6px
+			background-color: $c-neutral-200
+
+			.flat
+				padding: 8px 4px
+				
+				outline: 0
+				border: none
+				border-radius: 0
+
+				&:hover
+					background-color: rgba(0, 0, 0, 0.075)
+
+				&:focus, &:active
+					background-color: rgba(0, 0, 0, 0.15)
+
+			&.focus #SearchResult:first-child > .flat:first-child
+				@extend :focus
+
+		#PreviewFrame
+			border-radius: 0 0 6px 0
+			background-color: $c-neutral-100
+			border-left: 1px solid $c-neutral-000
+
+	&.Translucent
+		$alpha: 0.75
+
+		#Header #SearchEntry
+			background-color: alpha($c-neutral-200, 0.75)
+		#Content #ResultsFrame
+			background-color: alpha($c-neutral-200, 0.75)
+		#Content #PreviewFrame
+			background-color: alpha($c-neutral-100, 0.75)

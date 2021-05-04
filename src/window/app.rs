@@ -23,13 +23,14 @@ pub struct App {
 
 impl App {
 
-	pub fn new(app: &gtk::Application) -> Shared<Self> {
-		let window = gtk::ApplicationWindow::new(app);
+	pub fn new(application: &gtk::Application) -> Shared<Self> {
+		let window = gtk::ApplicationWindow::new(application);
 		window.set_icon_name(Some("system-search"));
 		window.set_default_size(WIDTH, HEIGHT);
 		window.set_resizable(false);
 		style::style(&window);
 		window.get_style_context().add_class("Scout");
+		window.get_style_context().add_class("Translucent");
 		window.set_app_paintable(true);
 		window.set_decorated(false);
 		window.set_title("Scout");
@@ -38,25 +39,25 @@ impl App {
 		window.connect_draw(draw);
 
 		let app_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
-		app_container.get_style_context().add_class("app_container");
 		window.add(&app_container);
 
 		let top_layout = gtk::Fixed::new();
-		top_layout.set_widget_name("top_layout");
+		top_layout.set_widget_name("Header");
 		app_container.pack_start(&top_layout, false, false, 0);
 
 		let search = gtk::Entry::new();
 		search.set_icon_from_icon_name(gtk::EntryIconPosition::Primary, Some("search-symbolic"));
-		search.set_widget_name("search");
+		search.set_widget_name("SearchEntry");
 		search.set_hexpand(true);
 		search.set_size_request(WIDTH, 48);
 		top_layout.put(&search, 0, 0);
 
 		let profile = gtk::Button::new();
-		profile.set_widget_name("profile");
+		profile.set_widget_name("ProfileButton");
 		top_layout.put(&profile, WIDTH - 41, 7);
 
 		let dropdown = gtk::PopoverMenu::new();
+		dropdown.set_widget_name("ProfileDropdown");
 		dropdown.set_relative_to(Some(&profile));
 		dropdown.set_border_width(6);
 
@@ -84,11 +85,13 @@ impl App {
 		dropdown_box.show_all();
 		profile.connect_clicked(move |_| dropdown.popup());
 
-		let profile_pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale("/var/lib/AccountsService/icons/auri", 32, 32, true).unwrap();
+		let profile_pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale(
+			&[ "/var/lib/AccountsService/icons/", &whoami::username() ].join(""), 32, 32, true).unwrap();
 		let profile_image = gtk::Image::from_pixbuf(Some(&profile_pixbuf));
 		profile.add(&profile_image);
 
 		let content_container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		content_container.set_widget_name("Content");
 		app_container.pack_start(&content_container, true, true, 0);
 
 		let results_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
@@ -97,14 +100,13 @@ impl App {
 		content_container.pack_start(&results_scroller, false, false, 0);
 
 		let results = gtk::Box::new(gtk::Orientation::Vertical, 0);
-		results.set_widget_name("results");
+		results.set_widget_name("ResultsFrame");
 		results_scroller.add(&results);
 
 		let preview = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
 		preview.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
-		preview.set_widget_name("preview");
+		preview.set_widget_name("PreviewFrame");
 		content_container.pack_start(&preview, true, true, 0);
-
 
 		set_visual(&window, None);
 		window.show_all();
@@ -124,16 +126,15 @@ impl App {
 		let results_clone = results.clone();
 		search.connect_property_has_focus_notify(move |search| {
 			if search.has_focus() {
-				results_clone.get_style_context().add_class("pseudo_focus");
+				results_clone.get_style_context().add_class("focus");
 				let adj = results_scroller.get_vadjustment().unwrap();
 				adj.set_value(adj.get_lower());
 			}
-			else { results_clone.get_style_context().remove_class("pseudo_focus"); }
+			else { results_clone.get_style_context().remove_class("focus"); }
 		});
 
 		let app_clone = app.clone();
-		search.connect_changed(move |s| app_clone.borrow_mut().search_changed(
-			&s.get_text().to_string().to_lowercase().replace(' ', "")));
+		search.connect_changed(move |_| if let Ok(mut app) = app_clone.try_borrow_mut() { app.search_changed(); });
 
 		let app_clone = app.clone();
 		search.connect_activate(move |_| {
@@ -174,11 +175,29 @@ impl App {
 		about.connect_activate(|_, _| about::show_about());
 		actions.add_action(&about);
 
+		let app_clone = app.clone();
+		application.connect_activate(move |_| {
+			let app = app_clone.borrow_mut();
+			app.window.show();
+			app.search.grab_focus();
+			app.search.select_region(search.get_text_length() as i32, search.get_text_length() as i32);
+		});
+		
+		let app_clone = app.clone();
+		window.connect_focus_out_event(move |window, _| {
+			window.hide();
+			let mut app = app_clone.borrow_mut();
+			app.search.set_text("");
+			app.search_changed();
+			Inhibit(false)
+		});
+
 		app
 	}
 
-	fn search_changed(&mut self, query: &str) {
-		
+	fn search_changed(&mut self) {
+		let query = &self.search.get_text().to_string().to_lowercase().replace(' ', "");
+
 		// Clear current results
 		if self.top_result.is_some() && self.top_result_focus_id.is_some() {
 			self.top_result.as_ref().unwrap().get_result_widget().disconnect(
@@ -211,7 +230,8 @@ impl App {
 			}
 		};
 
-		self.window.show_all();
+		self.results.show_all();
+		self.preview.show_all();
 	}
 }
 

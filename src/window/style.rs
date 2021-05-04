@@ -17,11 +17,11 @@ pub fn style(window: &gtk::ApplicationWindow) {
 
 	let button = gtk::Button::new();
 	let entry = gtk::Entry::new();
-	add_color("background_color", &window.get_style_context().get_background_color(gtk::StateFlags::NORMAL));
-	add_color("background_accent_color", &entry.get_style_context().get_background_color(gtk::StateFlags::NORMAL));
-	add_color("foreground_color", &button.get_style_context().get_color(gtk::StateFlags::NORMAL));
+	add_color("c-neutral-100", &window.get_style_context().get_background_color(gtk::StateFlags::NORMAL));
+	add_color("c-neutral-200", &entry.get_style_context().get_background_color(gtk::StateFlags::NORMAL));
+	add_color("c-neutral-900", &button.get_style_context().get_color(gtk::StateFlags::NORMAL));
 
-	let style = include_str!("./style.css");
+	let style = include_str!("../style/.build.css");
 	s.push_str(style);
 
 	provider.load_from_data(s.as_bytes()).expect("Failed to load CSS.");

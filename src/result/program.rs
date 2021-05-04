@@ -169,7 +169,8 @@ impl ProgramResult {
 		exec: &str, icon: Option<&str>, actions: Option<Vec<Action>>) -> Self {
 		
 		let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
-		widget.get_style_context().add_class("result");
+		widget.get_style_context().add_class("Program");
+		widget.set_widget_name("SearchResult");
 		let top_button = gtk::Button::new();
 
 		{
@@ -188,7 +189,7 @@ impl ProgramResult {
 			top_button.add(&widget_top);
 
 			let icon_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-			icon_box.get_style_context().add_class("result_application_icon_box");
+			icon_box.get_style_context().add_class("IconBox");
 			widget_top.pack_start(&icon_box, false, false, 4);
 
 			let icon = gtk::Image::from_icon_name(icon, gtk::IconSize::Dnd);
@@ -199,7 +200,7 @@ impl ProgramResult {
 			widget_top.pack_start(&description_box, true, true, 0);
 
 			let category_label = gtk::Label::new(Some(&["<span size='small' weight='bold'>", category, "</span>"].join("")));
-			category_label.get_style_context().add_class("category_label");
+			category_label.get_style_context().add_class("Category");
 			category_label.set_ellipsize(pango::EllipsizeMode::End);
 			category_label.set_use_markup(true);
 			category_label.set_xalign(0.0);
@@ -217,7 +218,7 @@ impl ProgramResult {
 				for action in actions {
 					let widget_action_button = gtk::Button::new();
 					widget_action_button.get_style_context().add_class("flat");
-					widget_action_button.get_style_context().add_class("action_button");
+					widget_action_button.get_style_context().add_class("ActionButton");
 					widget_actions.pack_start(&widget_action_button, true, true, 0);
 
 					let exec = ProgramResult::format_exec(&action.exec);
@@ -232,7 +233,7 @@ impl ProgramResult {
 					widget_action_button.add(&widget_action);
 
 					let icon_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-					icon_box.get_style_context().add_class("action_icon_box");
+					icon_box.get_style_context().add_class("IconBox");
 					widget_action.pack_start(&icon_box, false, false, 4);
 
 					let icon = gtk::Image::from_icon_name(Some("start-here-symbolic"), gtk::IconSize::Button);
@@ -299,10 +300,12 @@ impl SearchResult for ProgramResult {
 
 	fn get_preview_widget(&self) -> gtk::Widget {
 		let widget = gtk::Box::new(gtk::Orientation::Vertical, 4);
+		widget.get_style_context().add_class("Program");
+		widget.set_widget_name("SearchPreview");
 		widget.set_border_width(24);
 
 		let icon_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-		icon_box.get_style_context().add_class("preview_application_icon_box");
+		icon_box.get_style_context().add_class("IconBox");
 		icon_box.set_halign(gtk::Align::Center);
 		icon_box.set_size_request(64, 64);
 		widget.pack_start(&icon_box, false, false, 24);
@@ -312,7 +315,7 @@ impl SearchResult for ProgramResult {
 		icon_box.pack_start(&icon, false, false, 0);
 
 		let category_label = gtk::Label::new(Some(&["<span size='small' weight='bold'>", &self.category, "</span>"].join("")));
-		category_label.get_style_context().add_class("category_label");
+		category_label.get_style_context().add_class("Category");
 		category_label.set_ellipsize(pango::EllipsizeMode::End);
 		category_label.set_use_markup(true);
 		widget.pack_start(&category_label, false, false, 2);
@@ -322,7 +325,7 @@ impl SearchResult for ProgramResult {
 		widget.pack_start(&label, false, false, 2);
 
 		let description = gtk::Label::new(Some(&[ &self.description, "." ].join("")));
-		description.get_style_context().add_class("secondary");
+		description.get_style_context().add_class("Description");
 
 		description.set_line_wrap_mode(pango::WrapMode::WordChar);
 		description.set_ellipsize(pango::EllipsizeMode::End);
@@ -336,7 +339,7 @@ impl SearchResult for ProgramResult {
 
 		if let Some(version) = self.version.as_ref() {
 			let version_label = gtk::Label::new(Some(&["<span size='small'>VERSION ", &version, "</span>"].join("")));
-			version_label.get_style_context().add_class("category_label");
+			version_label.get_style_context().add_class("Category");
 			version_label.set_ellipsize(pango::EllipsizeMode::End);
 			version_label.set_use_markup(true);
 			version_label.set_valign(gtk::Align::End);
@@ -344,7 +347,7 @@ impl SearchResult for ProgramResult {
 		}
 
 		let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-		button_box.get_style_context().add_class("preview_application_button_box");
+		button_box.get_style_context().add_class("ButtonBox");
 		button_box.get_style_context().add_class("linked");
 		button_box.set_halign(gtk::Align::Center);
 		button_box.set_valign(gtk::Align::End);

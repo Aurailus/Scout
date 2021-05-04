@@ -13,7 +13,10 @@ fn main() {
 	let app = gtk::Application::new(Some("com.aurailus.scout"), Default::default())
 		.expect("Failed to initialize GTK application.");
 
-	app.connect_activate(|app| { app.register::<gio::Cancellable>(None).unwrap(); });
+	// app.connect_activate(|app| {
+	// 	// app.emit("activ")
+	// 	app.register::<gio::Cancellable>(None).unwrap();
+	// });
 	app.connect_startup(|app| { App::new(&app); });
 	app.run(&[]);
 }
