@@ -3,7 +3,7 @@ use serde::{ Serialize, Deserialize };
 
 use crate::shared::Shared;
 
-fn default_opacity() -> u32 { 100 }
+fn default_opacity() -> u32 { 90 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Preferences {

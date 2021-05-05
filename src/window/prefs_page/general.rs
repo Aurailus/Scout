@@ -8,7 +8,7 @@ pub fn general(_prefs: Shared<Preferences>) -> gtk::Box {
 	general.set_border_width(12);
 
 	let category_label = gtk::Label::new(None);
-	category_label.set_markup("<b>General settings.</b>");
+	category_label.set_markup("<b>General settings</b>");
 	category_label.set_widget_name("CategoryLabel");
 	category_label.set_halign(gtk::Align::Start);
 	general.pack_start(&category_label, false, false, 2);

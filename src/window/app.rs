@@ -186,16 +186,29 @@ impl App {
 		about.connect_activate(|_, _| about::show_about());
 		actions.add_action(&about);
 
+		let last_unfocus = Shared::new(0);
+
 		let app_clone = app.clone();
+		let last_unfocus_clone = last_unfocus.clone();
 		application.connect_activate(move |_| {
-			let app = app_clone.borrow_mut();
-			app.window.show();
-			app.search.grab_focus();
-			app.search.select_region(search.get_text_length() as i32, search.get_text_length() as i32);
+			let mut app = app_clone.borrow_mut();
+			let last_unfocus = last_unfocus_clone.borrow().to_owned();
+			if !app.window.is_visible() && glib::get_monotonic_time() - last_unfocus > 250_000 {
+				app.window.show();
+				app.search.grab_focus();
+				app.search.select_region(search.get_text_length() as i32, search.get_text_length() as i32);
+			}
+			else if last_unfocus != 0 {
+				app.window.hide();
+				app.search.set_text("");
+				app.search_changed();
+			}
 		});
 		
 		let app_clone = app.clone();
+		let last_unfocus_clone = last_unfocus.clone();
 		window.connect_focus_out_event(move |window, _| {
+			last_unfocus_clone.replace(glib::get_monotonic_time());
 			window.hide();
 			let mut app = app_clone.borrow_mut();
 			app.search.set_text("");
@@ -246,7 +259,6 @@ impl App {
 	}
 
 	fn enable_transparency(window: &gtk::ApplicationWindow) {
-
 		fn set_visual(window: &gtk::ApplicationWindow, _: Option<&gdk::Screen>) {
 			let screen = window.get_screen().unwrap();
 			if let Some(ref visual) = screen.get_rgba_visual() { window.set_visual(Some(visual)); }
@@ -254,7 +266,7 @@ impl App {
 		}
 
 		fn draw(_: &gtk::ApplicationWindow, ctx: &cairo::Context) -> Inhibit {
-		  ctx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+			ctx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
 			ctx.set_operator(cairo::Operator::Screen);
 			ctx.paint();
 			Inhibit(false)

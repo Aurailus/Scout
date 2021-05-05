@@ -8,7 +8,7 @@ pub fn appearance(prefs: Shared<Preferences>) -> gtk::Box {
 	appearance.set_border_width(12);
 
 	let category_label = gtk::Label::new(None);
-	category_label.set_markup("<b>Tweak the app's look and feel.</b>");
+	category_label.set_markup("<b>Tweak the app's look and feel</b>");
 	category_label.set_widget_name("CategoryLabel");
 	category_label.set_halign(gtk::Align::Start);
 	appearance.pack_start(&category_label, false, false, 2);

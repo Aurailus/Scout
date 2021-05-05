@@ -8,7 +8,7 @@ use super::style;
 use super::prefs_page;
 
 static WIDTH: i32 = 700;
-static HEIGHT: i32 = 400;
+static HEIGHT: i32 = 450;
 
 pub struct PrefsWindow {
 	notebook: gtk::Notebook
