@@ -4,6 +4,7 @@ use gio::prelude::*;
 mod shared;
 mod window;
 mod result;
+mod preferences;
 
 use window::App;
 

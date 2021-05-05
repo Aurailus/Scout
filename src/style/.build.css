@@ -46,14 +46,11 @@
   background-color: @c-neutral-100;
   border-left: 1px solid @c-neutral-000;
 }
-.Scout.Translucent #Header #SearchEntry {
-  background-color: alpha(@c-neutral-200, 0.75);
-}
-.Scout.Translucent #Content #ResultsFrame {
-  background-color: alpha(@c-neutral-200, 0.75);
+.Scout.Translucent #Header #SearchEntry, .Scout.Translucent #Content #ResultsFrame {
+  background-color: @c-background-secondary;
 }
 .Scout.Translucent #Content #PreviewFrame {
-  background-color: alpha(@c-neutral-100, 0.75);
+  background-color: @c-background-primary;
 }
 
 .Scout #Content #ResultsFrame #SearchResult.Program .IconBox {
@@ -90,4 +87,21 @@
 }
 .Scout #Content #PreviewFrame #SearchPreview.Program .ButtonBox button {
   padding: 4px 8px;
+}
+
+#PreferencesDialog {
+  outline-width: 0px;
+}
+#PreferencesDialog #Preferences > header {
+  padding: 0;
+  margin-top: -1px;
+}
+#PreferencesDialog #Preferences > header tab {
+  border-left: none;
+}
+#PreferencesDialog #Preferences > header label {
+  padding: 12px 6px 12px 32px;
+}
+#PreferencesDialog #CategoryLabel {
+  margin-bottom: 24px;
 }

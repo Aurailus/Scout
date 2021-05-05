@@ -4,7 +4,10 @@ use glib::translate::{ ToGlib, FromGlib };
 
 use super::about;
 use super::style;
+use super::prefs::PrefsWindow;
+
 use crate::shared::Shared;
+use crate::preferences::Preferences;
 use crate::result::{ SearchResult, ProgramResult };
 
 static WIDTH: i32 = 700;
@@ -16,27 +19,28 @@ pub struct App {
 	results: gtk::Box,
 	preview: gtk::ScrolledWindow,
 
+	preferences: Shared<Preferences>,
+
 	programs: Vec<ProgramResult>,
 	top_result: Option<Box<dyn SearchResult>>,
 	top_result_focus_id: Option<glib::signal::SignalHandlerId>
 }
 
 impl App {
-
 	pub fn new(application: &gtk::Application) -> Shared<Self> {
+		let preferences = Preferences::new(None);
+
 		let window = gtk::ApplicationWindow::new(application);
 		window.set_icon_name(Some("system-search"));
 		window.set_default_size(WIDTH, HEIGHT);
-		window.set_resizable(false);
-		style::style(&window);
-		window.get_style_context().add_class("Scout");
-		window.get_style_context().add_class("Translucent");
-		window.set_app_paintable(true);
+		window.set_skip_taskbar_hint(true);
+		window.set_skip_pager_hint(true);
 		window.set_decorated(false);
+		window.set_resizable(false);
 		window.set_title("Scout");
-
-		window.connect_screen_changed(set_visual);
-		window.connect_draw(draw);
+		style::style(&window, &preferences.borrow());
+		window.get_style_context().add_class("Translucent");
+		window.get_style_context().add_class("Scout");
 
 		let app_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		window.add(&app_container);
@@ -72,15 +76,15 @@ impl App {
 			
 		dropdown_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 3);
 
-		let preferences = gtk::ModelButton::new();
-		preferences.set_property_text(Some("Preferences"));
-		preferences.set_action_name(Some("app.preferences"));
-		dropdown_box.add(&preferences);
+		let preferences_button = gtk::ModelButton::new();
+		preferences_button.set_property_text(Some("Preferences"));
+		preferences_button.set_action_name(Some("app.preferences"));
+		dropdown_box.add(&preferences_button);
 
-		let about = gtk::ModelButton::new();
-		about.set_property_text(Some("About Scout"));
-		about.set_action_name(Some("app.about"));
-		dropdown_box.add(&about);
+		let about_button = gtk::ModelButton::new();
+		about_button.set_property_text(Some("About Scout"));
+		about_button.set_action_name(Some("app.about"));
+		dropdown_box.add(&about_button);
 
 		dropdown_box.show_all();
 		profile.connect_clicked(move |_| dropdown.popup());
@@ -108,7 +112,7 @@ impl App {
 		preview.set_widget_name("PreviewFrame");
 		content_container.pack_start(&preview, true, true, 0);
 
-		set_visual(&window, None);
+		if preferences.borrow().opacity != 100 { App::enable_transparency(&window); }
 		window.show_all();
 
 		let app = Shared::new(App {
@@ -117,6 +121,7 @@ impl App {
 			results: results.clone(),
 			preview: preview.clone(),
 			
+			preferences,
 			programs: ProgramResult::find_all(),
 			
 			top_result: None,
@@ -170,6 +175,12 @@ impl App {
 		 
 		let actions = gio::SimpleActionGroup::new();
 		window.insert_action_group("app", Some(&actions));
+
+		let app_clone = app.clone();
+		let preferences = gio::SimpleAction::new("preferences", None);
+		preferences.connect_activate(move |_, _| { PrefsWindow::new(&app_clone.borrow().preferences.borrow()); });
+
+		actions.add_action(&preferences);
 
 		let about = gio::SimpleAction::new("about", None);
 		about.connect_activate(|_, _| about::show_about());
@@ -233,17 +244,25 @@ impl App {
 		self.results.show_all();
 		self.preview.show_all();
 	}
-}
 
-fn set_visual(window: &gtk::ApplicationWindow, _: Option<&gdk::Screen>) {
-	let screen = window.get_screen().unwrap();
-	if let Some(ref visual) = screen.get_rgba_visual() { window.set_visual(Some(visual)); }
-	else { println!("RGBA missing."); }
-}
+	fn enable_transparency(window: &gtk::ApplicationWindow) {
 
-fn draw(_: &gtk::ApplicationWindow, ctx: &cairo::Context) -> Inhibit {
-  ctx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-	ctx.set_operator(cairo::Operator::Screen);
-	ctx.paint();
-	Inhibit(false)
+		fn set_visual(window: &gtk::ApplicationWindow, _: Option<&gdk::Screen>) {
+			let screen = window.get_screen().unwrap();
+			if let Some(ref visual) = screen.get_rgba_visual() { window.set_visual(Some(visual)); }
+			else { println!("RGBA missing."); }
+		}
+
+		fn draw(_: &gtk::ApplicationWindow, ctx: &cairo::Context) -> Inhibit {
+		  ctx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+			ctx.set_operator(cairo::Operator::Screen);
+			ctx.paint();
+			Inhibit(false)
+		}
+
+		window.set_app_paintable(true);
+		window.connect_draw(draw);
+		window.connect_screen_changed(set_visual);
+		set_visual(&window, None);
+	}
 }
