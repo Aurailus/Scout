@@ -1,0 +1,9 @@
+[package]
+edition = "2018"
+name = "scout-core"
+version = "0.0.1"
+description = "Scout"
+authors = [ "Auri <me@auri.xyz>" ]
+
+[build-dependencies]
+rustc_version = "0.2"

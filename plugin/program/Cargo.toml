@@ -1,0 +1,11 @@
+[package]
+edition = "2018"
+version = "0.1.0"
+name = "scout_program"
+authors = [ "Auri <me@auri.xyz>" ]
+
+[lib]
+crate-type = [ "cdylib" ]
+
+[dependencies]
+scout-core = { path = "../../core" }
