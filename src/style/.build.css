@@ -7,7 +7,7 @@
 .Scout #Header #SearchEntry {
   border-radius: 8px 8px 0 0;
   border: 1px solid @c-neutral-000;
-  background-color: @c-neutral-200;
+  background-color: @c-background-secondary;
 }
 .Scout #Header #ProfileButton {
   margin: 0;
@@ -27,7 +27,7 @@
 }
 .Scout #Content #ResultsFrame {
   border-radius: 0 0 0 6px;
-  background-color: @c-neutral-200;
+  background-color: @c-background-secondary;
 }
 .Scout #Content #ResultsFrame .flat {
   padding: 8px 4px;
@@ -43,13 +43,7 @@
 }
 .Scout #Content #PreviewFrame {
   border-radius: 0 0 6px 0;
-  background-color: @c-neutral-100;
   border-left: 1px solid @c-neutral-000;
-}
-.Scout.Translucent #Header #SearchEntry, .Scout.Translucent #Content #ResultsFrame {
-  background-color: @c-background-secondary;
-}
-.Scout.Translucent #Content #PreviewFrame {
   background-color: @c-background-primary;
 }
 

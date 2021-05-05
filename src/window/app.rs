@@ -39,7 +39,6 @@ impl App {
 		window.set_resizable(false);
 		window.set_title("Scout");
 		style::style(&window, &preferences.borrow());
-		window.get_style_context().add_class("Translucent");
 		window.get_style_context().add_class("Scout");
 
 		let app_container = gtk::Box::new(gtk::Orientation::Vertical, 0);

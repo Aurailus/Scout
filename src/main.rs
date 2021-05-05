@@ -1,16 +1,13 @@
-use dirs;
-use gio::prelude::*;
-
 mod shared;
 mod window;
 mod result;
 mod preferences;
 
+use gio::prelude::*;
+
 use window::App;
 
 fn main() {
-	std::env::set_current_dir(dirs::home_dir().unwrap()).unwrap();
-
 	let app = gtk::Application::new(Some("com.aurailus.scout"), Default::default())
 		.expect("Failed to initialize GTK application.");
 
