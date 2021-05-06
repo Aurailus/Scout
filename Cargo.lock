@@ -655,7 +655,6 @@ dependencies = [
  "cairo-rs",
  "colorsys",
  "convert_case",
- "freedesktop_entry_parser",
  "gdk",
  "gdk-pixbuf",
  "gio",
@@ -667,7 +666,6 @@ dependencies = [
  "scout-core",
  "serde",
  "serde_json",
- "shell-words",
  "whoami",
 ]
 
@@ -675,14 +673,23 @@ dependencies = [
 name = "scout-core"
 version = "0.0.1"
 dependencies = [
+ "freedesktop_entry_parser",
+ "gtk",
  "rustc_version",
+ "whoami",
 ]
 
 [[package]]
-name = "scout_program"
+name = "scout_plugin_application"
 version = "0.1.0"
 dependencies = [
+ "convert_case",
+ "freedesktop_entry_parser",
+ "gtk",
+ "pango",
  "scout-core",
+ "shell-words",
+ "whoami",
 ]
 
 [[package]]

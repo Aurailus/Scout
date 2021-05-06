@@ -1,5 +1,6 @@
 use gio::prelude::*;
 use gtk::prelude::*;
+use scout_core::{ SearchResult };
 use glib::translate::{ ToGlib, FromGlib };
 
 use super::about;
@@ -7,22 +8,22 @@ use super::style;
 use super::prefs::PrefsWindow;
 
 use crate::shared::Shared;
+use crate::plugins::Plugins;
 use crate::preferences::Preferences;
-use crate::result::{ SearchResult, ProgramResult };
 
 static WIDTH: i32 = 700;
 static HEIGHT: i32 = 500;
 
 pub struct App {
 	window: gtk::ApplicationWindow,
-	search: gtk::Entry,
-	results: gtk::Box,
-	preview: gtk::ScrolledWindow,
+	search_entry: gtk::Entry,
+	results_box: gtk::Box,
+	preview_box: gtk::ScrolledWindow,
 
+	plugins: Plugins,
 	preferences: Shared<Preferences>,
 
-	programs: Vec<ProgramResult>,
-	top_result: Option<Box<dyn SearchResult>>,
+	results: Vec<(usize, Box<dyn SearchResult>)>,
 	top_result_focus_id: Option<glib::signal::SignalHandlerId>
 }
 
@@ -113,17 +114,20 @@ impl App {
 
 		if preferences.borrow().opacity != 100 { App::enable_transparency(&window); }
 		window.show_all();
+		
+		let mut plugins = Plugins::new();
+		plugins.load("/home/auri/Code/Projects/Scout/target/debug/libscout_plugin_application.so").expect("Invocation Failed");
 
 		let app = Shared::new(App {
 			window: window.clone(),
-			search: search.clone(),
-			results: results.clone(),
-			preview: preview.clone(),
+			search_entry: search.clone(),
+			results_box: results.clone(),
+			preview_box: preview.clone(),
 			
+			plugins,
 			preferences,
-			programs: ProgramResult::find_all(),
 			
-			top_result: None,
+			results: vec![],
 			top_result_focus_id: None
 		});
 
@@ -143,31 +147,29 @@ impl App {
 		let app_clone = app.clone();
 		search.connect_activate(move |_| {
 			let app = app_clone.borrow();
-			if let Some(res) = app.top_result.as_ref() { res.activate(); }
+			if app.results.len() > 0 { app.results[0].1.activate(); }
 		});
 
 		let app_clone = app.clone();
 		search.connect_key_press_event(move |_, key| {
 			if key.get_keyval() == gdk::keys::constants::Down {
-				app_clone.borrow().results.child_focus(gtk::DirectionType::Down);
+				app_clone.borrow().results_box.child_focus(gtk::DirectionType::Down);
 				gtk::Inhibit(true)
 			}
 			else { gtk::Inhibit(false) }
 		});
 
-		let app_clone = app.clone();
+		let search_clone = search.clone();
 		results.connect_key_press_event(move |_, key| {
 			let keyval = key.get_keyval();
-			let search = app_clone.borrow().search.clone();
-			
 			if keyval >= gdk::keys::constants::A && keyval <= gdk::keys::constants::z {
-				search.grab_focus();
-				search.emit_insert_at_cursor(&keyval.to_unicode().unwrap().to_string());
+				search_clone.grab_focus();
+				search_clone.emit_insert_at_cursor(&keyval.to_unicode().unwrap().to_string());
 			}
 			else if keyval == gdk::keys::constants::BackSpace {
-				search.emit_backspace();
-				search.grab_focus();
-				search.select_region(search.get_text_length() as i32, search.get_text_length() as i32)
+				search_clone.emit_backspace();
+				search_clone.grab_focus();
+				search_clone.select_region(search_clone.get_text_length() as i32, search_clone.get_text_length() as i32)
 			}
 			gtk::Inhibit(false)
 		});
@@ -194,12 +196,12 @@ impl App {
 			let last_unfocus = last_unfocus_clone.borrow().to_owned();
 			if !app.window.is_visible() && glib::get_monotonic_time() - last_unfocus > 250_000 {
 				app.window.show();
-				app.search.grab_focus();
-				app.search.select_region(search.get_text_length() as i32, search.get_text_length() as i32);
+				app.search_entry.grab_focus();
+				app.search_entry.select_region(search.get_text_length() as i32, search.get_text_length() as i32);
 			}
 			else if last_unfocus != 0 {
 				app.window.hide();
-				app.search.set_text("");
+				app.search_entry.set_text("");
 				app.search_changed();
 			}
 		});
@@ -210,7 +212,7 @@ impl App {
 			last_unfocus_clone.replace(glib::get_monotonic_time());
 			window.hide();
 			let mut app = app_clone.borrow_mut();
-			app.search.set_text("");
+			app.search_entry.set_text("");
 			app.search_changed();
 			Inhibit(false)
 		});
@@ -219,42 +221,37 @@ impl App {
 	}
 
 	fn search_changed(&mut self) {
-		let query = &self.search.get_text().to_string().to_lowercase().replace(' ', "");
+		let query = &self.search_entry.get_text().to_string().to_lowercase().replace(' ', "");
 
 		// Clear current results
-		if self.top_result.is_some() && self.top_result_focus_id.is_some() {
-			self.top_result.as_ref().unwrap().get_result_widget().disconnect(
+		if self.results.len() > 0 && self.top_result_focus_id.is_some() {
+			self.results[0].1.get_result_widget().disconnect(
 				glib::signal::SignalHandlerId::from_glib(self.top_result_focus_id.as_ref().unwrap().to_glib()));
 			self.top_result_focus_id = None;
 		}
 
-		self.results.get_children().iter().for_each(|c| self.results.remove(c));
-		self.preview.get_children().iter().for_each(|c| self.preview.remove(c));
+		self.results_box.get_children().iter().for_each(|c| self.results_box.remove(c));
+		self.preview_box.get_children().iter().for_each(|c| self.preview_box.remove(c));
 		
 		// Filter programs into search results.
-		let mut results = self.programs.clone().into_iter().map(|app| (app.get_ranking(&query), app))
-			.filter(|(score, _)| *score > 0).collect::<Vec<_>>();
+		let mut results = self.plugins.get_results(&query);
+		results.retain(|(score, _)| *score > 0);
 		results.sort_by(|(a, _), (b, _)| b.partial_cmp(a).unwrap());
 		let min = std::cmp::max(if results.len() >= 1 { (results[0].0 as f64 * 0.75) as usize } else { 0 }, query.len() * 5);
-		results = results.into_iter().filter(|(score, _)| *score >= min).collect::<Vec<_>>();
+		results.retain(|(score, _)| *score >= min);
+		self.results = results;
 
-		// Populate new results.
-		self.top_result = match results.len() {
-			0 => None,
-			_ => {
-				self.preview.add(&results[0].1.get_preview_widget());
+		if self.results.len() > 0 {
+			self.preview_box.add(&self.results[0].1.get_preview_widget());
 
-				for (i, res) in results.iter().enumerate() {
-					res.1.set_first(i == 0);
-					self.results.pack_start(&res.1.get_result_widget(), false, false, 0);
-				}
-
-				Some(Box::new(results[0].1.clone()))
+			for (i, res) in self.results.iter().enumerate() {
+				res.1.set_first(i == 0);
+				self.results_box.pack_start(&res.1.get_result_widget(), false, false, 0);
 			}
-		};
 
-		self.results.show_all();
-		self.preview.show_all();
+			self.results_box.show_all();
+			self.preview_box.show_all();
+		}
 	}
 
 	fn enable_transparency(window: &gtk::ApplicationWindow) {

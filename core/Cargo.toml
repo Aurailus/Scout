@@ -7,3 +7,8 @@ authors = [ "Auri <me@auri.xyz>" ]
 
 [build-dependencies]
 rustc_version = "0.2"
+
+[dependencies]
+whoami = "1.1.2"
+freedesktop_entry_parser = "1.1.1"
+gtk = { version = "0.9.0", features = [ "v3_24" ] }

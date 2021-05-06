@@ -1,9 +1,6 @@
-mod program;
-pub use program::*;
-
 
 /**
- * A search result representing a found action.
+ * Base search result trait.
  */
 
 pub trait SearchResult {

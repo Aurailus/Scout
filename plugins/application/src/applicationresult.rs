@@ -1,26 +1,7 @@
-use std::fs;
-use std::ffi::OsStr;
-use std::path::PathBuf;
-
 use gtk::prelude::*;
 use convert_case::{ Case, Casing };
-use freedesktop_entry_parser::parse_entry;
 
-use super::SearchResult;
-
-
-/**
- * Unwraps an Ok result, or calls continue.
- */
-
-macro_rules! or_continue {
-	($res: expr) => {
-		match $res {
-			Ok(val) => val,
-			Err(_) => continue
-		}
-	};
-}
+use scout_core::SearchResult;
 
 
 /**
@@ -53,13 +34,14 @@ pub struct Action {
 	pub exec: String
 }
 
+
 /**
  * A program search result, created from a desktop entry.
  * Activates a program using a shell command when activated.
  */
 
 #[derive(Debug, Clone)]
-pub struct ProgramResult {
+pub struct ApplicationResult {
 	name: String,
 	category: String,
 	description: String,
@@ -73,73 +55,7 @@ pub struct ProgramResult {
 	top_button: gtk::Button
 }
 
-impl ProgramResult {
-
-	/**
-	 * Finds all desktop programs on the system, and creates search results for them.
-	 */
-
-	pub fn find_all() -> Vec<Self> {
-		let mut search_paths: Vec<PathBuf> = vec![
-			[ "/home/", &whoami::username(), "/.local/share/applications" ].join("").into(),
-			"/usr/share/applications".into(),
-			"/usr/local/share/applications".into()
-		];
-
-		let mut found = Vec::<ProgramResult>::new();
-
-		while search_paths.len() != 0 {
-			let path = search_paths.pop().unwrap();
-			let dir_iter = or_continue!(fs::read_dir(&path));
-			
-			for entry in dir_iter {
-				let entry = or_continue!(entry);
-				let path = entry.path();
-				
-				if path.is_dir() {
-					search_paths.push(path);
-					continue;
-				}
-
-				if path.extension() == Some(OsStr::new("desktop")) {
-					let parsed = or_continue!(parse_entry(path));
-					let entry = parsed.section("Desktop Entry");
-
-					let show = entry.attr("NoDisplay").unwrap_or("false") == "false" && entry.attr("Hidden").unwrap_or("false") == "false";
-
-					let action_names = entry.attr("Actions").and_then(|s| Some(s.split(';')
-						.filter(|s| !s.is_empty()).collect())).unwrap_or_else(|| vec![]);
-					let actions = if action_names.len() > 0 {
-						Some(action_names.iter().map(|name| {
-							let entry = parsed.section(["Desktop Action", name].join(" "));
-							Action {
-								name: entry.attr("Name").unwrap_or("Unnamed Action").to_owned(),
-								exec: entry.attr("Exec").unwrap().to_owned(),
-							}
-						}).collect())
-					} else { None };
-					
-					let exec = entry.attr("Exec");
-					if exec.is_none() { continue; }
-
-					if show {
-						found.push(ProgramResult::new(
-							entry.attr("Name").unwrap_or("Unnamed Application"),
-							entry.attr("Comment").unwrap_or(""),
-							&ProgramResult::choose_category(entry.attr("Categories")),
-							entry.attr("Version"),
-							exec.unwrap(),
-							entry.attr("Icon"),
-							actions
-						))
-					}
-				}
-			}
-		}
-
-		found
-	}
-
+impl ApplicationResult {
 
 	/**
 	 * Removes template parameters from a shell command.
@@ -177,7 +93,7 @@ impl ProgramResult {
 			top_button.get_style_context().add_class("flat");
 			widget.pack_start(&top_button, true, true, 0);
 
-			let exec = ProgramResult::format_exec(exec);
+			let exec = ApplicationResult::format_exec(exec);
 			top_button.connect_clicked(move |_| {
 				println!("Executing '{}'", &exec);
 				let args = shell_words::split(&exec).unwrap();
@@ -221,7 +137,7 @@ impl ProgramResult {
 					widget_action_button.get_style_context().add_class("ActionButton");
 					widget_actions.pack_start(&widget_action_button, true, true, 0);
 
-					let exec = ProgramResult::format_exec(&action.exec);
+					let exec = ApplicationResult::format_exec(&action.exec);
 					widget_action_button.connect_clicked(move |_| {
 						println!("Executing '{}'", &exec);
 						let args = shell_words::split(&exec).unwrap();
@@ -249,7 +165,7 @@ impl ProgramResult {
 			}
 		}
 
-		ProgramResult {
+		ApplicationResult {
 			name: name.to_owned(),
 			category: category.to_owned(),
 			description: description.to_owned(),
@@ -263,7 +179,7 @@ impl ProgramResult {
 	}
 }
 
-impl SearchResult for ProgramResult {
+impl SearchResult for ApplicationResult {
 	fn get_ranking(&self, query: &str) -> usize {
 		let mut score = 0;
 		let mut last_letter_ind: usize = 0;
@@ -287,7 +203,7 @@ impl SearchResult for ProgramResult {
 	}
 
 	fn activate(&self) {
-		let exec = ProgramResult::format_exec(&self.exec);
+		let exec = ApplicationResult::format_exec(&self.exec);
 		println!("Executing '{}'", &exec);
 		let args = shell_words::split(&exec).unwrap();
 		std::process::Command::new(&args[0]).args(&args[1..])

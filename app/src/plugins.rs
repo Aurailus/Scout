@@ -6,7 +6,7 @@
 use std::rc::Rc;
 use std::collections::{ HashMap, HashSet };
 
-use scout_core::{ Plugin, InvocationError };
+use scout_core::{ Plugin, SearchResult, Result };
 
 
 /** Proxy for a Plugin that keeps it's Library loaded. */
@@ -16,8 +16,8 @@ struct PluginProxy {
 }
 
 impl Plugin for PluginProxy {
-	fn call(&self, args: &[f64]) -> Result<f64, scout_core::InvocationError> {
-		self.plugin.call(args)
+	fn get_results(&self, query: &str) -> Result<Vec<(usize, Box<dyn SearchResult>)>> {
+		self.plugin.get_results(query)
 	}
 }
 
@@ -61,25 +61,27 @@ impl Plugins {
 	 * Returns a result containing the plugins loaded, or an error.
 	 */
 
-	pub unsafe fn load<P: AsRef<std::ffi::OsStr>>(&mut self, library_path: P) -> std::io::Result<HashSet<String>> {
-		let library = Rc::new(libloading::Library::new(library_path)
-			.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?);
-
-		let decl = library.get::<*mut scout_core::PluginDeclaration>(b"PLUGIN_DECLARATION\0")
-			.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?.read();
-
-		if decl.rustc_version != scout_core::RUSTC_VERSION || decl.core_version != scout_core::CORE_VERSION {
-			return Err(std::io::Error::new(std::io::ErrorKind::Other, "Plugin Version Mismatch.")); }
-
-		let mut registrar = PluginRegistrar::new(Rc::clone(&library));
-		(decl.register)(&mut registrar);
-
-		let loaded = registrar.plugins.iter().map(|(k, _)| k.clone()).collect::<HashSet<_>>();
-
-		self.plugins.extend(registrar.plugins);
-		self.libraries.push(library);
-
-		Ok(loaded)
+	pub fn load<P: AsRef<std::ffi::OsStr>>(&mut self, library_path: P) -> std::io::Result<HashSet<String>> {
+		unsafe {
+			let library = Rc::new(libloading::Library::new(library_path)
+				.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?);
+	
+			let decl = library.get::<*mut scout_core::PluginDeclaration>(b"PLUGIN_DECLARATION\0")
+				.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?.read();
+	
+			if decl.rustc_version != scout_core::RUSTC_VERSION || decl.core_version != scout_core::CORE_VERSION {
+				return Err(std::io::Error::new(std::io::ErrorKind::Other, "Plugin Version Mismatch.")); }
+	
+			let mut registrar = PluginRegistrar::new(Rc::clone(&library));
+			(decl.register)(&mut registrar);
+	
+			let loaded = registrar.plugins.iter().map(|(k, _)| k.clone()).collect::<HashSet<_>>();
+	
+			self.plugins.extend(registrar.plugins);
+			self.libraries.push(library);
+	
+			Ok(loaded)
+		}
 	}
 
 	/**
@@ -87,7 +89,14 @@ impl Plugins {
 	 * Returns a result with data or an error.
 	 */
 
-	pub fn call(&self, plugin: &str, arguments: &[f64]) -> Result<f64, InvocationError> {
-		self.plugins.get(plugin).ok_or_else(|| format!("\"{}\" not found.", plugin))?.call(arguments)
+	pub fn get_results(&self, query: &str) -> Vec<(usize, Box<dyn SearchResult>)> {
+		let mut results = vec![];
+
+		for tuple in self.plugins.iter() {
+			let res = scout_core::or_continue!(tuple.1.get_results(query));
+			results.extend(res);
+		}
+		
+		results
 	}
 }

@@ -33,9 +33,15 @@
  * That's it! Now your plugin can be built using `cargo build --all`, and the resultant .so can be loaded by Scout.
  */
 
+mod plugin;
+pub use plugin::*;
+
+mod searchresult;
+pub use searchresult::SearchResult;
+
+
 /** The current core scout_core version. */
 pub static CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
-
 
 /** The current Rust compiler version. */
 pub static RUSTC_VERSION: &str = env!("RUSTC_VERSION");
@@ -69,24 +75,13 @@ macro_rules! export_plugin {
 	};
 }
 
-
-/** Trait methods for plugins. */
-pub trait Plugin {
-	fn call(&self, args: &[f64]) -> Result<f64, InvocationError>;
-}
-
-
-/** Represents an error in invoking a plugin. */
-#[derive(Debug)]
-pub enum InvocationError {
-	InvalidArgumentCount { expected: usize, found: usize },
-	Other { msg: String }
-}
-
-impl<S: ToString> From<S> for InvocationError {
-	fn from(other: S) -> InvocationError {
-		InvocationError::Other {
-			msg: other.to_string(),
+/** Unwraps an Ok result, or calls continue; */
+#[macro_export]
+macro_rules! or_continue {
+	($res: expr) => {
+		match $res {
+			Ok(val) => val,
+			Err(_) => continue
 		}
-	}
+	};
 }

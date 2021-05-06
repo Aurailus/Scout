@@ -1,0 +1,20 @@
+[package]
+edition = "2018"
+version = "0.1.0"
+name = "scout_plugin_application"
+authors = [ "Auri <me@auri.xyz>" ]
+
+[lib]
+crate-type = [ "cdylib" ]
+
+[dependencies]
+scout-core = { path = "../../core" }
+
+whoami = "1.1.2"
+convert_case = "0.4.0"
+
+shell-words = "1.0.0"
+freedesktop_entry_parser = "1.1.1"
+
+pango = "0.9.1"
+gtk = { version = "0.9.0", features = [ "v3_24" ] }

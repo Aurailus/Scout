@@ -6,7 +6,7 @@
 use std::fmt;
 use std::rc::Rc;
 use std::ops::Deref;
-use std::cell::{ RefCell, Ref, RefMut, BorrowMutError, BorrowError };
+use std::cell::{ RefCell, Ref, RefMut, BorrowMutError };
 
 
 /**
@@ -45,9 +45,9 @@ impl <T> Shared<T> {
 	 * Borrows an immutable reference to the stored object, if there are no mutable borrows in use.
 	 */
 
-	pub fn try_borrow(&self) -> Result<Ref<T>, BorrowError> {
-		self.v.try_borrow()
-	}
+	// pub fn try_borrow(&self) -> Result<Ref<T>, BorrowError> {
+	// 	self.v.try_borrow()
+	// }
 
 
 	/**
@@ -72,9 +72,9 @@ impl <T> Shared<T> {
 	 * Borrows a mutable pointer to the stored object.
 	 */
 
-	pub fn as_ptr(&self) -> *mut T {
-		self.v.as_ptr()
-	}
+	// pub fn as_ptr(&self) -> *mut T {
+	// 	self.v.as_ptr()
+	// }
 
 
 	/**
