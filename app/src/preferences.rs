@@ -5,6 +5,10 @@ use crate::shared::Shared;
 
 fn default_opacity() -> u32 { 90 }
 
+fn default_hide_on_unfocus() -> bool { true }
+
+fn default_always_on_top() -> bool { true }
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Preferences {
 	
@@ -12,7 +16,13 @@ pub struct Preferences {
 	pub path: std::path::PathBuf,
 
 	#[serde(default = "default_opacity")]
-	pub opacity: u32
+	pub opacity: u32,
+
+	#[serde(default = "default_hide_on_unfocus")]
+	pub hide_on_unfocus: bool,
+
+	#[serde(default = "default_always_on_top")]
+	pub always_on_top: bool
 }
 
 impl Preferences {

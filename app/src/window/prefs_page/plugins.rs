@@ -8,7 +8,7 @@ pub fn plugins(_prefs: Shared<Preferences>) -> gtk::Box {
 	plugins.set_border_width(12);
 
 	let category_label = gtk::Label::new(None);
-	category_label.set_markup("<b>Find more with Plugins</b>");
+	category_label.set_markup("<b>Find more with Plugins.</b>");
 	category_label.set_widget_name("CategoryLabel");
 	category_label.set_halign(gtk::Align::Start);
 	plugins.pack_start(&category_label, false, false, 2);

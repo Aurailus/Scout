@@ -1,12 +1,13 @@
-use scout_core::{ Plugin, SearchResult, PluginRegistrar };
-
+use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
+
 use freedesktop_entry_parser::parse_entry;
 
+use scout_core::{ Plugin, SearchResult, PluginRegistrar };
 
-mod applicationresult;
-use applicationresult::{ ApplicationResult, Action };
+mod result;
+use result::{ Action, ApplicationResult };
 
 pub struct ApplicationPlugin {
 	results: Vec<ApplicationResult>
@@ -14,12 +15,12 @@ pub struct ApplicationPlugin {
 
 impl ApplicationPlugin {
 	fn find_applications() -> Vec<ApplicationResult> {
-		let mut search_paths: Vec<PathBuf> = vec![
-			[ "/home/", &whoami::username(), "/.local/share/applications" ].join("").into(),
-			"/usr/share/applications".into(),
-			"/usr/local/share/applications".into()
-		];
-
+		let mut search_paths = env::var("XDG_DATA_DIRS")
+			.and_then(|string| Ok(string.split(":").map(|string| format!("{}/applications", string).into()).collect::<Vec<PathBuf>>()))
+			.unwrap_or_else(|_| vec![]);
+		if let Some(dir) = dirs::data_dir() { search_paths.push(format!("{}/applications", dir.to_str().unwrap()).into()); }
+		else { search_paths.push(format!("/home/{}/.local/share/applications", &whoami::username()).into()); }
+		
 		let mut found = Vec::<ApplicationResult>::new();
 
 		while search_paths.len() != 0 {
@@ -71,6 +72,8 @@ impl ApplicationPlugin {
 			}
 		}
 
+		found.sort();
+		found.dedup();
 		found
 	}
 

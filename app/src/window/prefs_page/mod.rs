@@ -1,5 +1,5 @@
-mod general;
-pub use general::*;
+mod behavior;
+pub use behavior::*;
 
 mod appearance;
 pub use appearance::*;

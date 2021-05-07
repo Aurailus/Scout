@@ -36,15 +36,28 @@
   border-radius: 0;
 }
 .Scout #Content #ResultsFrame .flat:hover {
-  background-color: rgba(0, 0, 0, 0.075);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.075), rgba(0, 0, 0, 0.075) 50%, transparent);
 }
 .Scout #Content #ResultsFrame .flat:focus, .Scout #Content #ResultsFrame.focus #SearchResult:first-child > .flat:first-child, .Scout #Content #ResultsFrame .flat:active {
-  background-color: rgba(0, 0, 0, 0.15);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15) 50%, transparent);
 }
 .Scout #Content #PreviewFrame {
   border-radius: 0 0 6px 0;
   border-left: 1px solid @c-neutral-000;
   background-color: @c-background-primary;
+}
+.Scout #Content #PreviewFrame .IconBox {
+  margin-bottom: 16px;
+}
+.Scout #Content #PreviewFrame .Description {
+  margin-top: 8px;
+}
+.Scout #Content scrollbar {
+  border-left: none;
+  background-color: @c-background-secondary;
+}
+.Scout #Content undershoot {
+  background: none;
 }
 
 .Scout #Content #ResultsFrame #SearchResult.Program .IconBox {

@@ -8,12 +8,12 @@ pub fn appearance(prefs: Shared<Preferences>) -> gtk::Box {
 	appearance.set_border_width(12);
 
 	let category_label = gtk::Label::new(None);
-	category_label.set_markup("<b>Tweak the app's look and feel</b>");
+	category_label.set_markup("<b>Tweak the app's look and feel.</b>");
 	category_label.set_widget_name("CategoryLabel");
 	category_label.set_halign(gtk::Align::Start);
 	appearance.pack_start(&category_label, false, false, 2);
 
-	let scale_label = gtk::Label::new(Some(&format!("Background Opacity  -  {}%", prefs.borrow().opacity)));
+	let scale_label = gtk::Label::new(Some(&format!(" Background Opacity  -  {}%", prefs.borrow().opacity)));
 	scale_label.set_halign(gtk::Align::Start);
 	appearance.pack_start(&scale_label, false, false, 4);
 
@@ -27,7 +27,7 @@ pub fn appearance(prefs: Shared<Preferences>) -> gtk::Box {
 	let preferences_clone = prefs.clone();
 	scale.connect_change_value(move |_, _, mut val| {
 		val = val.min(100.0);
-		scale_label.set_text(&format!("Background Opacity  -  {}%", val.floor()));
+		scale_label.set_text(&format!(" Background Opacity  -  {}%", val.floor()));
 		preferences_clone.borrow_mut().opacity = val as u32;
 		Inhibit(false)
 	});

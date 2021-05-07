@@ -24,7 +24,9 @@ pub struct App {
 	preferences: Shared<Preferences>,
 
 	results: Vec<(usize, Box<dyn SearchResult>)>,
-	top_result_focus_id: Option<glib::signal::SignalHandlerId>
+	top_result_focus_id: Option<glib::signal::SignalHandlerId>,
+
+	pub last_hide: i64
 }
 
 impl App {
@@ -34,13 +36,15 @@ impl App {
 		let window = gtk::ApplicationWindow::new(application);
 		window.set_icon_name(Some("system-search"));
 		window.set_default_size(WIDTH, HEIGHT);
-		window.set_skip_taskbar_hint(true);
-		window.set_skip_pager_hint(true);
 		window.set_decorated(false);
 		window.set_resizable(false);
 		window.set_title("Scout");
 		style::style(&window, &preferences.borrow());
 		window.get_style_context().add_class("Scout");
+		
+		window.set_skip_taskbar_hint(preferences.borrow().hide_on_unfocus);
+		window.set_skip_pager_hint(preferences.borrow().hide_on_unfocus);
+		window.set_keep_above(preferences.borrow().always_on_top);
 
 		let app_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		window.add(&app_container);
@@ -125,10 +129,12 @@ impl App {
 			preview_box: preview.clone(),
 			
 			plugins,
-			preferences,
+			preferences: preferences.clone(),
 			
 			results: vec![],
-			top_result_focus_id: None
+			top_result_focus_id: None,
+
+			last_hide: 0
 		});
 
 		let results_clone = results.clone();
@@ -173,49 +179,43 @@ impl App {
 			}
 			gtk::Inhibit(false)
 		});
-		 
+		
 		let actions = gio::SimpleActionGroup::new();
 		window.insert_action_group("app", Some(&actions));
 
 		let app_clone = app.clone();
-		let preferences = gio::SimpleAction::new("preferences", None);
-		preferences.connect_activate(move |_, _| { PrefsWindow::new(&app_clone.borrow().preferences.borrow()); });
-
-		actions.add_action(&preferences);
-
-		let about = gio::SimpleAction::new("about", None);
-		about.connect_activate(|_, _| about::show_about());
-		actions.add_action(&about);
-
-		let last_unfocus = Shared::new(0);
-
-		let app_clone = app.clone();
-		let last_unfocus_clone = last_unfocus.clone();
-		application.connect_activate(move |_| {
+		let preferences_action = gio::SimpleAction::new("preferences", None);
+		preferences_action.connect_activate(move |_, _| {
 			let mut app = app_clone.borrow_mut();
-			let last_unfocus = last_unfocus_clone.borrow().to_owned();
-			if !app.window.is_visible() && glib::get_monotonic_time() - last_unfocus > 250_000 {
-				app.window.show();
-				app.search_entry.grab_focus();
-				app.search_entry.select_region(search.get_text_length() as i32, search.get_text_length() as i32);
+			PrefsWindow::new(&app.preferences.borrow());
+			app.hide();
+		});
+		actions.add_action(&preferences_action);
+
+		let about_action = gio::SimpleAction::new("about", None);
+		about_action.connect_activate(|_, _| about::show_about());
+		actions.add_action(&about_action);
+
+		let first = Shared::new(true);
+		let app_clone = app.clone();
+		application.connect_activate(move |_| {
+			if *first.borrow() {
+				first.replace(false);
 			}
-			else if last_unfocus != 0 {
-				app.window.hide();
-				app.search_entry.set_text("");
-				app.search_changed();
+			else {
+				let mut app = app_clone.borrow_mut();
+				if app.can_show() && !app.is_active() { app.show() }
+				else { app.hide() }
 			}
 		});
 		
-		let app_clone = app.clone();
-		let last_unfocus_clone = last_unfocus.clone();
-		window.connect_focus_out_event(move |window, _| {
-			last_unfocus_clone.replace(glib::get_monotonic_time());
-			window.hide();
-			let mut app = app_clone.borrow_mut();
-			app.search_entry.set_text("");
-			app.search_changed();
-			Inhibit(false)
-		});
+		if preferences.borrow().hide_on_unfocus {
+			let app_clone = app.clone();
+			window.connect_focus_out_event(move |_, _| {
+				app_clone.borrow_mut().hide();
+				Inhibit(false)
+			});
+		}
 
 		app
 	}
@@ -272,5 +272,33 @@ impl App {
 		window.connect_draw(draw);
 		window.connect_screen_changed(set_visual);
 		set_visual(&window, None);
+	}
+
+	fn can_show(&self) -> bool {
+		glib::get_monotonic_time() - self.last_hide >= 250_000
+	}
+
+	fn is_active(&self) -> bool {
+		self.window.get_focus().is_some() && self.window.is_visible()
+	}
+
+	fn hide(&mut self) {
+		if !self.window.is_visible() { return }
+
+		self.window.hide();
+		self.last_hide = glib::get_monotonic_time();
+
+		let search = self.search_entry.clone();
+		drop(self);
+
+		search.set_text("");
+	}
+
+	fn show(&mut self) {
+		if !self.can_show() { return }
+
+		self.window.grab_focus();
+		self.window.show();
+		self.search_entry.grab_focus();
 	}
 }

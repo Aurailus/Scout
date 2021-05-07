@@ -10,7 +10,7 @@ use scout_core::SearchResult;
  * present useful information to regular users.
  */
 
-const EXCLUDED_CATEGORIES: [&str; 10] = [
+const EXCLUDED_CATEGORIES: [&str; 11] = [
 	"APPLICATION",
 	"CONSOLEONLY",
 	"NETWORK",
@@ -20,7 +20,8 @@ const EXCLUDED_CATEGORIES: [&str; 10] = [
 	"GNOME",
 	"XFCE",
 	"GTK",
-	"KDE"
+	"KDE",
+	""
 ];
 
 
@@ -78,6 +79,22 @@ impl ApplicationResult {
 
 
 	/**
+	 * Finds an icon from an icon name specified in the desktop file.
+	 */
+	
+	pub fn get_icon(icon: Option<&str>, scale: i32) -> gtk::Image {
+		let flags = gtk::IconLookupFlags::USE_BUILTIN | gtk::IconLookupFlags::GENERIC_FALLBACK | gtk::IconLookupFlags::FORCE_SIZE;
+		let theme = gtk::IconTheme::get_default().unwrap();
+
+		let find_in_theme  = || theme.load_icon(&icon.unwrap_or(""), scale, flags).map_err(|_| ()).unwrap_or(None).ok_or(());
+		let find_from_file = || gdk_pixbuf::Pixbuf::from_file_at_scale(&icon.unwrap_or(""), scale, scale, true).map_err(|_| ());
+		let find_default   = || theme.load_icon("application-x-executable", scale, flags).unwrap().unwrap();
+
+		gtk::Image::from_pixbuf(Some(&find_from_file().unwrap_or_else(|_| find_in_theme().unwrap_or_else(|_| find_default()))))
+	}
+
+
+	/**
 	 * Creates a new Program result, with a corresponding result widget.
 	 */
 
@@ -108,14 +125,14 @@ impl ApplicationResult {
 			icon_box.get_style_context().add_class("IconBox");
 			widget_top.pack_start(&icon_box, false, false, 4);
 
-			let icon = gtk::Image::from_icon_name(icon, gtk::IconSize::Dnd);
+			let icon = ApplicationResult::get_icon(icon, 32);
 			icon.set_size_request(32, 32);
 			icon_box.pack_start(&icon, false, false, 0);
 
 			let description_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 			widget_top.pack_start(&description_box, true, true, 0);
 
-			let category_label = gtk::Label::new(Some(&["<span size='small' weight='bold'>", category, "</span>"].join("")));
+			let category_label = gtk::Label::new(Some(&[ "<span size='small' weight='bold'>", category, "</span>" ].join("")));
 			category_label.get_style_context().add_class("Category");
 			category_label.set_ellipsize(pango::EllipsizeMode::End);
 			category_label.set_use_markup(true);
@@ -218,27 +235,25 @@ impl SearchResult for ApplicationResult {
 		let widget = gtk::Box::new(gtk::Orientation::Vertical, 4);
 		widget.get_style_context().add_class("Program");
 		widget.set_widget_name("SearchPreview");
-		widget.set_border_width(24);
+		widget.set_border_width(36);
 
 		let icon_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
 		icon_box.get_style_context().add_class("IconBox");
 		icon_box.set_halign(gtk::Align::Center);
-		icon_box.set_size_request(64, 64);
-		widget.pack_start(&icon_box, false, false, 24);
+		widget.pack_start(&icon_box, false, false, 0);
 
-		let icon = gtk::Image::from_icon_name(self.icon.as_ref().and_then(|s| Some(s.as_str())), gtk::IconSize::Dialog);
-		icon.set_pixel_size(64);
+		let icon = ApplicationResult::get_icon(self.icon.as_ref().and_then(|s| Some(s.as_str())), 96);
 		icon_box.pack_start(&icon, false, false, 0);
 
-		let category_label = gtk::Label::new(Some(&["<span size='small' weight='bold'>", &self.category, "</span>"].join("")));
+		let category_label = gtk::Label::new(Some(&[ "<span size='small' weight='bold'>", &self.category, "</span>" ].join("")));
 		category_label.get_style_context().add_class("Category");
 		category_label.set_ellipsize(pango::EllipsizeMode::End);
 		category_label.set_use_markup(true);
-		widget.pack_start(&category_label, false, false, 2);
+		widget.pack_start(&category_label, false, false, 0);
 
 		let label = gtk::Label::new(Some(&self.name));
 		label.set_ellipsize(pango::EllipsizeMode::End);
-		widget.pack_start(&label, false, false, 2);
+		widget.pack_start(&label, false, false, 4);
 
 		let description = gtk::Label::new(Some(&[ &self.description, "." ].join("")));
 		description.get_style_context().add_class("Description");
@@ -251,15 +266,14 @@ impl SearchResult for ApplicationResult {
 		description.set_line_wrap(true);
 		description.set_lines(5);
 
-		widget.pack_start(&description, false, false, 4);
+		widget.pack_start(&description, false, false, 0);
 
 		if let Some(version) = self.version.as_ref() {
-			let version_label = gtk::Label::new(Some(&["<span size='small'>VERSION ", &version, "</span>"].join("")));
+			let version_label = gtk::Label::new(Some(&[ "<span size='small'>VERSION ", &version, "</span>" ].join("")));
 			version_label.get_style_context().add_class("Category");
 			version_label.set_ellipsize(pango::EllipsizeMode::End);
 			version_label.set_use_markup(true);
-			version_label.set_valign(gtk::Align::End);
-			widget.pack_start(&version_label, true, true, 2);
+			widget.pack_start(&version_label, false, false, 12);
 		}
 
 		let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -267,7 +281,7 @@ impl SearchResult for ApplicationResult {
 		button_box.get_style_context().add_class("linked");
 		button_box.set_halign(gtk::Align::Center);
 		button_box.set_valign(gtk::Align::End);
-		widget.pack_end(&button_box, false, false, 4);
+		widget.pack_end(&button_box, false, false, 0);
 
 		let launch_button = gtk::Button::from_icon_name(Some("media-playback-start-symbolic"), gtk::IconSize::Button);
 		button_box.pack_start(&launch_button, false, false, 0);
@@ -279,3 +293,24 @@ impl SearchResult for ApplicationResult {
 		return widget.upcast();
 	}
 }
+
+impl Ord for ApplicationResult {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		self.name.cmp(&other.name)
+	}
+}
+
+impl PartialOrd for ApplicationResult {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl Eq for ApplicationResult {}
+
+impl PartialEq for ApplicationResult {
+	fn eq(&self, other: &Self) -> bool {
+		self.name == other.name && self.exec == other.exec
+	}
+}
+

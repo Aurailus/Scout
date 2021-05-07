@@ -8,7 +8,7 @@ use super::style;
 use super::prefs_page;
 
 static WIDTH: i32 = 700;
-static HEIGHT: i32 = 450;
+static HEIGHT: i32 = 454;
 
 pub struct PrefsWindow {
 	notebook: gtk::Notebook
@@ -26,7 +26,7 @@ impl PrefsWindow {
 
 		let window = gtk::Window::new(gtk::WindowType::Toplevel);
 		window.set_widget_name("PreferencesDialog");
-		window.set_icon_name(Some("system-search"));
+		window.set_icon_name(Some("preferences-other"));
 		window.set_title("Scout Preferences");
 		window.set_default_size(WIDTH, HEIGHT);
 		window.set_resizable(false);
@@ -50,29 +50,6 @@ impl PrefsWindow {
 		notebook.set_show_border(false);
 		overlay.add(&notebook);
 
-		// let saved_revealer = gtk::Revealer::new();
-		// saved_revealer.set_transition_type(gtk::RevealerTransitionType::SlideUp);
-		// saved_revealer.set_transition_duration(300);
-		// saved_revealer.set_halign(gtk::Align::Center);
-		// saved_revealer.set_valign(gtk::Align::Start);
-		// overlay.add_overlay(&saved_revealer);
-
-		// let saved_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-		// saved_box.get_style_context().add_class("app-notification");
-		// saved_box.pack_start(&gtk::Label::new(Some("Your preferences have been saved.")), true, true, 32);
-		// saved_revealer.add(&saved_box);
-		// saved_revealer.show_all();
-		
-		// save_button.connect_clicked(move |_| {
-		// 	preferences_clone.borrow().save().unwrap();
-		// 	saved_revealer.set_reveal_child(true);
-		// 	let saved_revealer = saved_revealer.clone();
-		// 	glib::timeout_add_local(3000, move || {
-		// 		saved_revealer.set_reveal_child(false);
-		// 		Continue(false)
-		// 	});
-		// });
-
 		let preferences_clone = preferences.clone();
 		save_button.connect_clicked(move |_| {
 			preferences_clone.borrow().save().unwrap();
@@ -82,7 +59,7 @@ impl PrefsWindow {
 
 	  let prefs = Shared::new(PrefsWindow { notebook });
 
-		prefs.borrow().add_page("General",		&prefs_page::general(preferences.clone()));
+		prefs.borrow().add_page("Behavior",		&prefs_page::behavior(preferences.clone()));
 		prefs.borrow().add_page("Appearance",	&prefs_page::appearance(preferences.clone()));
 		prefs.borrow().add_page("Plugins",		&prefs_page::plugins(preferences.clone()));
 		

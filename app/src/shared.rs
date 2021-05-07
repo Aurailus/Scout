@@ -67,7 +67,6 @@ impl <T> Shared<T> {
 		self.v.try_borrow_mut()
 	}
 
-
 	/**
 	 * Borrows a mutable pointer to the stored object.
 	 */

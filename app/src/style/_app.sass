@@ -2,6 +2,7 @@
 
 .Scout
 	border-radius: 8px
+
 	#Header
 		#SearchEntry
 			border-radius: 8px 8px 0 0
@@ -37,10 +38,12 @@
 				border-radius: 0
 
 				&:hover
-					background-color: rgba(0, 0, 0, 0.075)
+					$color: rgba(0, 0, 0, 0.075)
+					background: linear-gradient(90deg, $color, $color 50%, transparent)
 
 				&:focus, &:active
-					background-color: rgba(0, 0, 0, 0.15)
+					$color: rgba(0, 0, 0, 0.15)
+					background: linear-gradient(90deg, $color, $color 50%, transparent)
 
 			&.focus #SearchResult:first-child > .flat:first-child
 				@extend :focus
@@ -49,3 +52,16 @@
 			border-radius: 0 0 6px 0
 			border-left: 1px solid $c-neutral-000
 			background-color: $c-background-primary
+
+			.IconBox
+				margin-bottom: 16px
+
+			.Description
+				margin-top: 8px
+
+		scrollbar
+			border-left: none
+			background-color: $c-background-secondary
+
+		undershoot
+			background: none
