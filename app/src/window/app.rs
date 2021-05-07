@@ -73,7 +73,7 @@ impl App {
 		greeting.set_property_use_markup(true);
 		greeting.set_action_name(Some("_"));
 		dropdown_box.add(&greeting);
-			
+
 		dropdown_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 3);
 
 		let preferences_button = gtk::ModelButton::new();
@@ -90,9 +90,15 @@ impl App {
 		profile.connect_clicked(move |_| dropdown.popup());
 
 		let profile_pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale(
-			&[ "/var/lib/AccountsService/icons/", &whoami::username() ].join(""), 32, 32, true).unwrap();
-		let profile_image = gtk::Image::from_pixbuf(Some(&profile_pixbuf));
-		profile.add(&profile_image);
+			&[ "/var/lib/AccountsService/icons/", &whoami::username() ].join(""), 32, 32, true);
+
+		match profile_pixbuf {
+			Ok(profile_pixbuf) => {
+				let profile_image = gtk::Image::from_pixbuf(Some(&profile_pixbuf));
+				profile.add(&profile_image);
+			}
+			Err(_) => {}
+		}
 
 		let content_container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		content_container.set_widget_name("Content");
@@ -114,19 +120,19 @@ impl App {
 
 		if preferences.borrow().opacity != 100 { App::enable_transparency(&window); }
 		window.show_all();
-		
+
 		let mut plugins = Plugins::new();
-		plugins.load("/home/auri/Code/Projects/Scout/target/debug/libscout_plugin_application.so").expect("Invocation Failed");
+		plugins.load("target/debug/libscout_plugin_application.so").expect("Invocation Failed");
 
 		let app = Shared::new(App {
 			window: window.clone(),
 			search_entry: search.clone(),
 			results_box: results.clone(),
 			preview_box: preview.clone(),
-			
+
 			plugins,
 			preferences,
-			
+
 			results: vec![],
 			top_result_focus_id: None
 		});
@@ -173,7 +179,7 @@ impl App {
 			}
 			gtk::Inhibit(false)
 		});
-		 
+
 		let actions = gio::SimpleActionGroup::new();
 		window.insert_action_group("app", Some(&actions));
 
@@ -205,7 +211,7 @@ impl App {
 				app.search_changed();
 			}
 		});
-		
+
 		let app_clone = app.clone();
 		let last_unfocus_clone = last_unfocus.clone();
 		window.connect_focus_out_event(move |window, _| {
@@ -232,7 +238,7 @@ impl App {
 
 		self.results_box.get_children().iter().for_each(|c| self.results_box.remove(c));
 		self.preview_box.get_children().iter().for_each(|c| self.preview_box.remove(c));
-		
+
 		// Filter programs into search results.
 		let mut results = self.plugins.get_results(&query);
 		results.retain(|(score, _)| *score > 0);
