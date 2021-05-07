@@ -1,2 +1,2 @@
 [workspace]
-members = [ "core", "app", "plugins/application", "plugins/directory" ]
+members = [ "core", "app", "plugins/application", "plugins/directory", "plugins/websearch" ]

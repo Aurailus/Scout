@@ -1,0 +1,17 @@
+[package]
+edition = "2018"
+version = "0.1.0"
+name = "scout_plugin_websearch"
+authors = [ "rubenwardy <rw@rubenwardy.com>" ]
+
+[lib]
+crate-type = [ "cdylib" ]
+
+[dependencies]
+scout-core = { path = "../../core" }
+
+opener = "0.4.1"
+url = "2.2.2"
+pango = "0.9.1"
+gdk-pixbuf = "0.9.0"
+gtk = { version = "0.9.0", features = [ "v3_24" ] }

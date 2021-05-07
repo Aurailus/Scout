@@ -36,7 +36,7 @@ pub struct App {
 
 impl App {
 	fn build_interface(application: &gtk::Application, preferences: &Preferences, styles: Vec<&'static str>) -> AppWidgets {
-		
+
 		// Basic window configuration //
 
 		let window = gtk::ApplicationWindow::new(application);
@@ -50,7 +50,7 @@ impl App {
 		window.set_skip_taskbar_hint(preferences.hide_on_unfocus);
 		window.set_skip_pager_hint(preferences.hide_on_unfocus);
 		window.set_keep_above(preferences.always_on_top);
-		
+
 		style::style(&window, &preferences, styles);
 
 		let app_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -95,7 +95,7 @@ impl App {
 			button.get_style_context().add_class("flat");
 			button.get_style_context().add_class("model");
 			button.set_action_name(Some(&action));
-			
+
 			let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
 			button.add(&button_box);
 
@@ -230,7 +230,7 @@ impl App {
 		let logout_action = gio::SimpleAction::new("logout", None);
 		logout_action.connect_activate(move |_, _| drop(std::process::Command::new("xfce4-session-logout").spawn()));
 		actions.add_action(&logout_action);
-		
+
 		let shutdown_action = gio::SimpleAction::new("shutdown", None);
 		shutdown_action.connect_activate(move |_, _| drop(system_shutdown::shutdown()));
 		actions.add_action(&shutdown_action);
@@ -251,7 +251,7 @@ impl App {
 				else { app.hide() }
 			}
 		});
-		
+
 		if app_ref.preferences.borrow().hide_on_unfocus {
 			let app_clone = app.clone();
 			app_ref.widgets.window.connect_focus_out_event(move |_, _| {
@@ -263,11 +263,12 @@ impl App {
 
 	pub fn new(application: &gtk::Application) -> Shared<Self> {
 		let preferences = Preferences::new(None);
-		
+
 		let mut plugins = Plugins::new();
 
 		plugins.load("target/debug/libscout_plugin_application.so").expect("Invocation Failed");
 		plugins.load("target/debug/libscout_plugin_directory.so").expect("Invocation Failed");
+		plugins.load("target/debug/libscout_plugin_websearch.so").expect("Invocation Failed");
 		// plugins.load("target/debug/libscout_plugin_starter.so").expect("Invocation Failed");
 
 		let widgets = App::build_interface(&application, &preferences.borrow(), plugins.get_styles());
