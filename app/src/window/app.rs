@@ -14,12 +14,17 @@ use crate::preferences::Preferences;
 static WIDTH: i32 = 700;
 static HEIGHT: i32 = 500;
 
-pub struct App {
+pub struct AppWidgets {
 	window: gtk::ApplicationWindow,
-	search_entry: gtk::Entry,
-	results_box: gtk::Box,
-	preview_box: gtk::ScrolledWindow,
+	search: gtk::Entry,
+	results: gtk::Box,
+	preview: gtk::Box,
+	results_scroller: gtk::ScrolledWindow,
+	preview_scroller: gtk::ScrolledWindow
+}
 
+pub struct App {
+	widgets: AppWidgets,
 	plugins: Plugins,
 	preferences: Shared<Preferences>,
 
@@ -30,21 +35,20 @@ pub struct App {
 }
 
 impl App {
-	pub fn new(application: &gtk::Application) -> Shared<Self> {
-		let preferences = Preferences::new(None);
-
+	fn build_interface(application: &gtk::Application, preferences: &Preferences, styles: Vec<&'static str>) -> AppWidgets {
 		let window = gtk::ApplicationWindow::new(application);
 		window.set_icon_name(Some("system-search"));
 		window.set_default_size(WIDTH, HEIGHT);
 		window.set_decorated(false);
 		window.set_resizable(false);
 		window.set_title("Scout");
-		style::style(&window, &preferences.borrow());
 		window.get_style_context().add_class("Scout");
+
+		window.set_skip_taskbar_hint(preferences.hide_on_unfocus);
+		window.set_skip_pager_hint(preferences.hide_on_unfocus);
+		window.set_keep_above(preferences.always_on_top);
 		
-		window.set_skip_taskbar_hint(preferences.borrow().hide_on_unfocus);
-		window.set_skip_pager_hint(preferences.borrow().hide_on_unfocus);
-		window.set_keep_above(preferences.borrow().always_on_top);
+		style::style(&window, &preferences, styles);
 
 		let app_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		window.add(&app_container);
@@ -108,70 +112,71 @@ impl App {
 		content_container.set_widget_name("Content");
 		app_container.pack_start(&content_container, true, true, 0);
 
+		let results_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+		results_container.set_widget_name("ResultsContainer");
+		content_container.pack_start(&results_container, false, false, 0);
+
 		let results_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
 		results_scroller.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
+		results_scroller.set_widget_name("ResultsScroller");
 		results_scroller.set_size_request(220, -1);
-		content_container.pack_start(&results_scroller, false, false, 0);
+		results_container.pack_start(&results_scroller, true, true, 0);
 
 		let results = gtk::Box::new(gtk::Orientation::Vertical, 0);
-		results.set_widget_name("ResultsFrame");
 		results_scroller.add(&results);
 
-		let preview = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
-		preview.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
-		preview.set_widget_name("PreviewFrame");
+		let preview = gtk::Box::new(gtk::Orientation::Vertical, 0);
+		preview.set_widget_name("PreviewContainer");
 		content_container.pack_start(&preview, true, true, 0);
 
-		if preferences.borrow().opacity != 100 { App::enable_transparency(&window); }
+		let preview_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
+		preview_scroller.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
+		preview.pack_start(&preview_scroller, true, true, 0);
+
+		if preferences.opacity != 100 { App::enable_transparency(&window); }
 		window.show_all();
 
-		let mut plugins = Plugins::new();
-		plugins.load("target/debug/libscout_plugin_application.so").expect("Invocation Failed");
+		AppWidgets {
+			window, search,
+			results, preview,
+			results_scroller,
+			preview_scroller
+		}
+	}
 
-		let app = Shared::new(App {
-			window: window.clone(),
-			search_entry: search.clone(),
-			results_box: results.clone(),
-			preview_box: preview.clone(),
+	fn bind_interface(application: &gtk::Application, app: Shared<App>) {
+		let app_ref = app.borrow();
 
-			preferences: preferences.clone(),
-			
-			results: vec![],
-			top_result_focus_id: None,
-
-			last_hide: 0
-		});
-
-		let results_clone = results.clone();
-		search.connect_property_has_focus_notify(move |search| {
+		let results_scroller_clone = app_ref.widgets.results_scroller.clone();
+		app_ref.widgets.search.connect_property_has_focus_notify(move |search| {
 			if search.has_focus() {
-				results_clone.get_style_context().add_class("focus");
-				let adj = results_scroller.get_vadjustment().unwrap();
+				results_scroller_clone.get_style_context().add_class("focus");
+				let adj = results_scroller_clone.get_vadjustment().unwrap();
 				adj.set_value(adj.get_lower());
 			}
-			else { results_clone.get_style_context().remove_class("focus"); }
+			else { results_scroller_clone.get_style_context().remove_class("focus"); }
 		});
 
 		let app_clone = app.clone();
-		search.connect_changed(move |_| if let Ok(mut app) = app_clone.try_borrow_mut() { app.search_changed(); });
+		app_ref.widgets.search.connect_changed(move |_| if let Ok(mut app) = app_clone.try_borrow_mut() { app.search_changed(); });
 
 		let app_clone = app.clone();
-		search.connect_activate(move |_| {
+		app_ref.widgets.search.connect_activate(move |_| {
 			let app = app_clone.borrow();
 			if app.results.len() > 0 { app.results[0].1.activate(); }
 		});
 
 		let app_clone = app.clone();
-		search.connect_key_press_event(move |_, key| {
+		app_ref.widgets.search.connect_key_press_event(move |_, key| {
 			if key.get_keyval() == gdk::keys::constants::Down {
-				app_clone.borrow().results_box.child_focus(gtk::DirectionType::Down);
+				app_clone.borrow().widgets.results.child_focus(gtk::DirectionType::Down);
 				gtk::Inhibit(true)
 			}
 			else { gtk::Inhibit(false) }
 		});
 
-		let search_clone = search.clone();
-		results.connect_key_press_event(move |_, key| {
+		let search_clone = app_ref.widgets.search.clone();
+		app_ref.widgets.results.connect_key_press_event(move |_, key| {
 			let keyval = key.get_keyval();
 			if keyval >= gdk::keys::constants::A && keyval <= gdk::keys::constants::z {
 				search_clone.grab_focus();
@@ -186,7 +191,7 @@ impl App {
 		});
 
 		let actions = gio::SimpleActionGroup::new();
-		window.insert_action_group("app", Some(&actions));
+		app_ref.widgets.window.insert_action_group("app", Some(&actions));
 
 		let app_clone = app.clone();
 		let preferences_action = gio::SimpleAction::new("preferences", None);
@@ -214,19 +219,41 @@ impl App {
 			}
 		});
 		
-		if preferences.borrow().hide_on_unfocus {
+		if app_ref.preferences.borrow().hide_on_unfocus {
 			let app_clone = app.clone();
-			window.connect_focus_out_event(move |_, _| {
+			app_ref.widgets.window.connect_focus_out_event(move |_, _| {
 				app_clone.borrow_mut().hide();
 				Inhibit(false)
 			});
 		}
+	}
+
+	pub fn new(application: &gtk::Application) -> Shared<Self> {
+		let preferences = Preferences::new(None);
+		
+		let mut plugins = Plugins::new();
+
+		plugins.load("target/debug/libscout_plugin_application.so").expect("Invocation Failed");
+		plugins.load("target/debug/libscout_plugin_starter.so").expect("Invocation Failed");
+
+		let widgets = App::build_interface(&application, &preferences.borrow(), plugins.get_styles());
+
+		let app = Shared::new(App {
+			widgets, plugins, preferences,
+
+			results: vec![],
+			top_result_focus_id: None,
+
+			last_hide: 0
+		});
+
+		App::bind_interface(&application, app.clone());
 
 		app
 	}
 
 	fn search_changed(&mut self) {
-		let query = &self.search_entry.get_text().to_string().to_lowercase().replace(' ', "");
+		let query = &self.widgets.search.get_text().to_string().to_lowercase().replace(' ', "");
 
 		// Clear current results
 		if self.results.len() > 0 && self.top_result_focus_id.is_some() {
@@ -235,8 +262,8 @@ impl App {
 			self.top_result_focus_id = None;
 		}
 
-		self.results_box.get_children().iter().for_each(|c| self.results_box.remove(c));
-		self.preview_box.get_children().iter().for_each(|c| self.preview_box.remove(c));
+		self.widgets.results.get_children().iter().for_each(|c| self.widgets.results.remove(c));
+		self.widgets.preview_scroller.get_children().iter().for_each(|c| self.widgets.preview_scroller.remove(c));
 
 		// Filter programs into search results.
 		let mut results = self.plugins.get_results(&query);
@@ -247,15 +274,15 @@ impl App {
 		self.results = results;
 
 		if self.results.len() > 0 {
-			self.preview_box.add(&self.results[0].1.get_preview_widget());
+			self.widgets.preview_scroller.add(&self.results[0].1.get_preview_widget());
 
 			for (i, res) in self.results.iter().enumerate() {
 				res.1.set_first(i == 0);
-				self.results_box.pack_start(&res.1.get_result_widget(), false, false, 0);
+				self.widgets.results.pack_start(&res.1.get_result_widget(), false, false, 0);
 			}
 
-			self.results_box.show_all();
-			self.preview_box.show_all();
+			self.widgets.results.show_all();
+			self.widgets.preview_scroller.show_all();
 		}
 	}
 
@@ -284,16 +311,16 @@ impl App {
 	}
 
 	fn is_active(&self) -> bool {
-		self.window.get_focus().is_some() && self.window.is_visible()
+		self.widgets.window.get_focus().is_some() && self.widgets.window.is_visible()
 	}
 
 	fn hide(&mut self) {
-		if !self.window.is_visible() { return }
+		if !self.widgets.window.is_visible() { return }
 
-		self.window.hide();
+		self.widgets.window.hide();
 		self.last_hide = glib::get_monotonic_time();
 
-		let search = self.search_entry.clone();
+		let search = self.widgets.search.clone();
 		drop(self);
 
 		search.set_text("");
@@ -302,8 +329,8 @@ impl App {
 	fn show(&mut self) {
 		if !self.can_show() { return }
 
-		self.window.grab_focus();
-		self.window.show();
-		self.search_entry.grab_focus();
+		self.widgets.window.grab_focus();
+		self.widgets.window.show();
+		self.widgets.search.grab_focus();
 	}
 }

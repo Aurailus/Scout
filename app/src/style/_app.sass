@@ -1,67 +1,61 @@
-@use 'def' as *
+@use 'color'
 
 .Scout
 	border-radius: 8px
 
-	#Header
-		#SearchEntry
-			border-radius: 8px 8px 0 0
-			border: 1px solid $c-neutral-000
-			background-color: $c-background-secondary
+#Header
+	#SearchEntry
+		border-radius: 8px 8px 0 0
+		border: 1px solid color.$neutral_000
+		background-color: color.$background-secondary
 
-		#ProfileButton
-			margin: 0
-			padding: 0
+	#ProfileButton
+		margin: 0
+		padding: 0
 
-			border-radius: 50%
-			outline-offset: 1px
-			-gtk-outline-radius: 50%
-			border: 1px solid $c-neutral-000
+		border-radius: 50%
+		outline-offset: 1px
+		-gtk-outline-radius: 50%
+		border: 1px solid color.$neutral_000
 
-	#ProfileDropdown separator
-		background-color: $c-neutral-300
+#ProfileDropdown separator
+	background-color: color.$neutral_300
 
-	#Content
-		border: 1px solid $c-neutral-000
-		border-radius: 0 0 8px 8px
-		border-top: none
+#Content
+	border: 1px solid color.$neutral_000
+	border-radius: 0 0 8px 8px
+	border-top: none
 
-		#ResultsFrame
-			border-radius: 0 0 0 6px
-			background-color: $c-background-secondary
+	scrollbar
+		border: none
+		background: none
 
-			.flat
-				padding: 8px 4px
-				
-				outline: 0
-				border: none
-				border-radius: 0
+	undershoot
+		background: none
 
-				&:hover
-					$color: rgba(0, 0, 0, 0.075)
-					background: linear-gradient(90deg, $color, $color 50%, transparent)
+#ResultsContainer
+	border-radius: 0 0 0 6px
+	background-color: color.$background-secondary
 
-				&:focus, &:active
-					$color: rgba(0, 0, 0, 0.15)
-					background: linear-gradient(90deg, $color, $color 50%, transparent)
+	.flat
+		padding: 8px 4px
+		
+		outline: 0
+		border: none
+		border-radius: 0
 
-			&.focus #SearchResult:first-child > .flat:first-child
-				@extend :focus
+		&:hover
+			$color: rgba(0, 0, 0, 0.075)
+			background: linear-gradient(90deg, $color, $color 50%, transparent)
 
-		#PreviewFrame
-			border-radius: 0 0 6px 0
-			border-left: 1px solid $c-neutral-000
-			background-color: $c-background-primary
+		&:focus, &:active
+			$color: rgba(0, 0, 0, 0.15)
+			background: linear-gradient(90deg, $color, $color 50%, transparent)
 
-			.IconBox
-				margin-bottom: 16px
+	#ResultsScroller.focus #SearchResult:first-child > .flat:first-child
+		@extend :focus
 
-			.Description
-				margin-top: 8px
-
-		scrollbar
-			border-left: none
-			background-color: $c-background-secondary
-
-		undershoot
-			background: none
+#PreviewContainer
+	border-radius: 0 0 6px 0
+	border-left: 1px solid color.$neutral_000
+	background-color: color.$background-primary

@@ -1,7 +1,7 @@
 [package]
 edition = "2018"
 version = "0.0.1"
-name = "scout_plugin_application"
+name = "scout_plugin_starter"
 authors = [ "Auri <me@auri.xyz>" ]
 
 [lib]
@@ -9,14 +9,6 @@ crate-type = [ "cdylib" ]
 
 [dependencies]
 scout-core = { path = "../../core" }
-
-whoami = "1.1.2"
-convert_case = "0.4.0"
-
-dirs = "3.0.2"
-itertools = "0.10.0"
-shell-words = "1.0.0"
-freedesktop_entry_parser = "1.1.1"
 
 pango = "0.9.1"
 gdk-pixbuf = "0.9.0"

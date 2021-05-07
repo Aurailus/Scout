@@ -62,7 +62,6 @@ impl ApplicationPlugin {
 							entry.attr("Name").unwrap_or("Unnamed Application"),
 							entry.attr("Comment").unwrap_or(""),
 							&ApplicationResult::choose_category(entry.attr("Categories")),
-							entry.attr("Version"),
 							exec.unwrap(),
 							entry.attr("Icon"),
 							actions
@@ -90,6 +89,10 @@ impl Plugin for ApplicationPlugin {
 	fn get_results(&self, query: &str) -> scout_core::Result<Vec<(usize, Box<dyn SearchResult>)>> {
 		Ok(self.results.iter().map(|app| (app.get_ranking(&query), Box::new(app.clone()) as Box<dyn SearchResult>))
 			.filter(|(score, _)| *score > 0).collect::<Vec<(usize, Box<dyn SearchResult>)>>())
+	}
+
+	fn get_styles(&self) -> scout_core::Result<&'static str> {
+		Ok(include_str!("../style/.build.css"))
 	}
 }
 

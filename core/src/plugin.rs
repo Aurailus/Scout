@@ -8,17 +8,15 @@ use crate::SearchResult;
 pub enum InvocationError {
 	
 	/** Used when the plugin does not implement the feature requested. */
-	DoesNotProvide { feature: String },
+	DoesNotProvide(String),
 
 	/** Generic error. */
-	Other { msg: String }
+	Other(String)
 }
 
 impl<S: ToString> From<S> for InvocationError {
 	fn from(other: S) -> InvocationError {
-		InvocationError::Other {
-			msg: other.to_string(),
-		}
+		InvocationError::Other(other.to_string())
 	}
 }
 
@@ -45,4 +43,11 @@ pub trait Plugin {
 	 */
 	
 	fn get_results(&self, query: &str) -> Result<Vec<(usize, Box<dyn SearchResult>)>>;
+
+
+	/**
+	 * Gets a plugin's custom CSS.
+	 */
+ 
+	 fn get_styles(&self) -> Result<&'static str>;
 }

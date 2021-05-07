@@ -1,3 +1,5 @@
+@use 'color'
+
 #PreferencesDialog
 	outline-width: 0px
 	
@@ -14,3 +16,40 @@
 
 	#CategoryLabel
 		margin-bottom: 24px
+
+	#SwatchTest
+		padding: 4px
+		background-color: black
+
+		label:nth-child(1)
+			background: color.$neutral_000
+
+		label:nth-child(2)
+			background: color.$neutral_100
+
+		label:nth-child(3)
+			background: color.$neutral_200
+
+		label:nth-child(4)
+			background: color.$neutral_300
+
+		label:nth-child(5)
+			background: color.$neutral_400
+
+		label:nth-child(n + 6)
+			color: color.$neutral-000
+
+		label:nth-child(6)
+			background: color.$neutral_500
+
+		label:nth-child(7)
+			background: color.$neutral_600
+
+		label:nth-child(8)
+			background: color.$neutral_700
+
+		label:nth-child(9)
+			background: color.$neutral_800
+
+		label:nth-child(10)
+			background: color.$neutral_900

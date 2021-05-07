@@ -740,7 +740,7 @@ dependencies = [
 
 [[package]]
 name = "scout_plugin_application"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "convert_case",
  "dirs",
@@ -752,6 +752,16 @@ dependencies = [
  "scout-core",
  "shell-words",
  "whoami",
+]
+
+[[package]]
+name = "scout_plugin_starter"
+version = "0.0.1"
+dependencies = [
+ "gdk-pixbuf",
+ "gtk",
+ "pango",
+ "scout-core",
 ]
 
 [[package]]

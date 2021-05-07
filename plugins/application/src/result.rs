@@ -47,7 +47,6 @@ pub struct ApplicationResult {
 	category: String,
 	description: String,
 	icon: Option<String>,
-	version: Option<String>,
 
 	exec: String,
 	actions: Option<Vec<Action>>,
@@ -98,11 +97,11 @@ impl ApplicationResult {
 	 * Creates a new Program result, with a corresponding result widget.
 	 */
 
-	pub fn new(name: &str, description: &str, category: &str, version: Option<&str>,
+	pub fn new(name: &str, description: &str, category: &str,
 		exec: &str, icon: Option<&str>, actions: Option<Vec<Action>>) -> Self {
 		
 		let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
-		widget.get_style_context().add_class("Program");
+		widget.get_style_context().add_class("Application");
 		widget.set_widget_name("SearchResult");
 		let top_button = gtk::Button::new();
 
@@ -187,7 +186,6 @@ impl ApplicationResult {
 			category: category.to_owned(),
 			description: description.to_owned(),
 			icon: icon.and_then(|s| Some(s.to_owned())),
-			version: version.and_then(|s| Some(s.to_owned())),
 			exec: exec.to_owned(),
 			top_button,
 			actions,
@@ -233,7 +231,7 @@ impl SearchResult for ApplicationResult {
 
 	fn get_preview_widget(&self) -> gtk::Widget {
 		let widget = gtk::Box::new(gtk::Orientation::Vertical, 4);
-		widget.get_style_context().add_class("Program");
+		widget.get_style_context().add_class("Application");
 		widget.set_widget_name("SearchPreview");
 		widget.set_border_width(36);
 
@@ -267,14 +265,6 @@ impl SearchResult for ApplicationResult {
 		description.set_lines(5);
 
 		widget.pack_start(&description, false, false, 0);
-
-		if let Some(version) = self.version.as_ref() {
-			let version_label = gtk::Label::new(Some(&[ "<span size='small'>VERSION ", &version, "</span>" ].join("")));
-			version_label.get_style_context().add_class("Category");
-			version_label.set_ellipsize(pango::EllipsizeMode::End);
-			version_label.set_use_markup(true);
-			widget.pack_start(&version_label, false, false, 12);
-		}
 
 		let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		button_box.get_style_context().add_class("ButtonBox");

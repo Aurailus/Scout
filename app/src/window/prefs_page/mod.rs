@@ -6,3 +6,6 @@ pub use appearance::*;
 
 mod plugins;
 pub use plugins::*;
+
+mod developer;
+pub use developer::*;

@@ -51,6 +51,7 @@ pub static RUSTC_VERSION: &str = env!("RUSTC_VERSION");
 pub struct PluginDeclaration {
 	pub rustc_version: &'static str,
 	pub core_version: &'static str,
+
 	pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar),
 }
 

@@ -19,6 +19,10 @@ impl Plugin for PluginProxy {
 	fn get_results(&self, query: &str) -> Result<Vec<(usize, Box<dyn SearchResult>)>> {
 		self.plugin.get_results(query)
 	}
+
+	fn get_styles(&self) -> Result<&'static str> {
+		self.plugin.get_styles()
+	}
 }
 
 
@@ -82,6 +86,14 @@ impl Plugins {
 	
 			Ok(loaded)
 		}
+	}
+
+	/**
+	 * Returns a vector of string slices containing custom plugin CSS.
+	 */
+
+	pub fn get_styles(&self) -> Vec<&'static str> {
+		self.plugins.iter().map(|(_, p)| p.get_styles()).filter(|p| p.is_ok()).map(|p| p.unwrap()).collect::<_>()
 	}
 
 	/**
