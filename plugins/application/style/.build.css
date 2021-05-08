@@ -1,7 +1,7 @@
 #SearchResult.Application .IconBox {
   padding: 4px;
   border-radius: 4px;
-  background-color: alpha(@c-neutral-400, 0.3);
+  background-color: alpha(@c-neutral-900, 0.1);
 }
 #SearchResult.Application .Category {
   margin-top: 3px;
@@ -22,7 +22,7 @@
   padding: 8px;
   margin-bottom: 16px;
   border-radius: 8px;
-  background-color: alpha(@c-neutral-400, 0.3);
+  background-color: alpha(@c-neutral-900, 0.1);
 }
 #SearchPreview.Application .Category {
   margin-top: 3px;

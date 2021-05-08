@@ -87,6 +87,7 @@ impl ApplicationPlugin {
 
 impl Plugin for ApplicationPlugin {
 	fn get_results(&self, query: &str) -> scout_core::Result<Vec<(usize, Box<dyn SearchResult>)>> {
+		let query = query.to_lowercase().replace(' ', "");
 		Ok(self.results.iter().map(|app| (app.get_ranking(&query), Box::new(app.clone()) as Box<dyn SearchResult>))
 			.filter(|(score, _)| *score > 0).collect::<Vec<(usize, Box<dyn SearchResult>)>>())
 	}

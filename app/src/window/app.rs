@@ -18,7 +18,7 @@ pub struct AppWidgets {
 	window: gtk::ApplicationWindow,
 	search: gtk::Entry,
 	results: gtk::Box,
-	preview: gtk::Box,
+	// preview: gtk::Box,
 	results_scroller: gtk::ScrolledWindow,
 	preview_scroller: gtk::ScrolledWindow
 }
@@ -138,7 +138,8 @@ impl App {
 
 		AppWidgets {
 			window, search,
-			results, preview,
+			results,
+			// preview,
 			results_scroller,
 			preview_scroller
 		}
@@ -234,7 +235,7 @@ impl App {
 		let mut plugins = Plugins::new();
 
 		plugins.load("target/debug/libscout_plugin_application.so").expect("Invocation Failed");
-		plugins.load("target/debug/libscout_plugin_starter.so").expect("Invocation Failed");
+		// plugins.load("target/debug/libscout_plugin_starter.so").expect("Invocation Failed");
 
 		let widgets = App::build_interface(&application, &preferences.borrow(), plugins.get_styles());
 
@@ -253,7 +254,7 @@ impl App {
 	}
 
 	fn search_changed(&mut self) {
-		let query = &self.widgets.search.get_text().to_string().to_lowercase().replace(' ', "");
+		let query = &self.widgets.search.get_text();
 
 		// Clear current results
 		if self.results.len() > 0 && self.top_result_focus_id.is_some() {
