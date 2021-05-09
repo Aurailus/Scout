@@ -1,0 +1,37 @@
+#SearchResult.Application .IconBox {
+  padding: 4px;
+  border-radius: 4px;
+  background-color: alpha(@c-neutral-900, 0.1);
+}
+#SearchResult.Application .Category {
+  margin-top: 3px;
+  color: @c-neutral-800;
+}
+#SearchResult.Application .ActionButton {
+  padding: 4px 0 4px 22px;
+  color: @c-neutral-800;
+}
+#SearchResult.Application .ActionButton .IconBox {
+  padding: 2px 3px;
+}
+#SearchResult.Application .ActionButton .IconBox image {
+  padding-top: 1px;
+}
+
+#SearchPreview.Application .IconBox {
+  padding: 8px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background-color: alpha(@c-neutral-900, 0.1);
+}
+#SearchPreview.Application .Category {
+  margin-top: 3px;
+  color: @c-neutral-800;
+}
+#SearchPreview.Application .Description {
+  margin-top: 8px;
+  color: @c-neutral-800;
+}
+#SearchPreview.Application .ButtonBox button {
+  padding: 4px 8px;
+}

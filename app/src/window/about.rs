@@ -18,6 +18,5 @@ pub fn show_about() {
 		if let Ok(button) = child.downcast::<gtk::Button>() { titlebar.remove(&button); }
 	}
 
-	about.connect_response(|about, _| about.close());
-	about.run();
+	about.show();
 }

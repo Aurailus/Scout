@@ -1,0 +1,20 @@
+$neutral_000: #{"@c-neutral-000"} // Border
+$neutral_100: #{"@c-neutral-100"} // Background
+$neutral_200: #{"@c-neutral-200"} // ...
+$neutral_300: #{"@c-neutral-300"} // ...
+$neutral_400: #{"@c-neutral-400"} // ...
+$neutral_500: #{"@c-neutral-500"} // ...
+$neutral_600: #{"@c-neutral-600"} // ...
+$neutral_700: #{"@c-neutral-700"} // ...
+$neutral_800: #{"@c-neutral-800"} // De-emphasized Text
+$neutral_900: #{"@c-neutral-900"} // Text
+
+
+$background-primary: #{"@c-background-primary"} // Primary background color
+$background-secondary: #{"@c-background-secondary"} // Secondary background color
+
+@function alpha($color, $alpha)
+	@return #{"alpha(" + $color + ", " + $alpha + ")"}
+
+@function mix($color_a, $color_b, $amount)
+	@return #{"mix(" + $color_a + ", " + $color_b + ", " + $amount + ")"}

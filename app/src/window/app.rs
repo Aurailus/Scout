@@ -36,6 +36,9 @@ pub struct App {
 
 impl App {
 	fn build_interface(application: &gtk::Application, preferences: &Preferences, styles: Vec<&'static str>) -> AppWidgets {
+		
+		// Basic window configuration //
+
 		let window = gtk::ApplicationWindow::new(application);
 		window.set_icon_name(Some("system-search"));
 		window.set_default_size(WIDTH, HEIGHT);
@@ -53,6 +56,8 @@ impl App {
 		let app_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		window.add(&app_container);
 
+		// Header, search, and profile button //
+
 		let top_layout = gtk::Fixed::new();
 		top_layout.set_widget_name("Header");
 		app_container.pack_start(&top_layout, false, false, 0);
@@ -68,6 +73,15 @@ impl App {
 		profile.set_widget_name("ProfileButton");
 		top_layout.put(&profile, WIDTH - 41, 7);
 
+		let profile_pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale(
+			&[ "/var/lib/AccountsService/icons/", &whoami::username() ].join(""), 32, 32, true);
+		if let Ok(profile_pixbuf) = profile_pixbuf {
+			let profile_image = gtk::Image::from_pixbuf(Some(&profile_pixbuf));
+			profile.add(&profile_image);
+		}
+
+		// Profile dropdown and list items //
+
 		let dropdown = gtk::PopoverMenu::new();
 		dropdown.set_widget_name("ProfileDropdown");
 		dropdown.set_relative_to(Some(&profile));
@@ -76,37 +90,38 @@ impl App {
 		let dropdown_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		dropdown.add(&dropdown_box);
 
-		let greeting = gtk::ModelButton::new();
-		greeting.set_property_text(Some(&[ "<span weight='bold'>", &whoami::realname(), "</span>" ].join("")));
-		greeting.set_property_use_markup(true);
-		greeting.set_action_name(Some("_"));
-		dropdown_box.add(&greeting);
+		fn add_dropdown_button(dropdown: &gtk::Box, label: &str, icon: &str, action: &str) {
+			let button = gtk::Button::new();
+			button.get_style_context().add_class("flat");
+			button.get_style_context().add_class("model");
+			button.set_action_name(Some(&action));
+			
+			let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+			button.add(&button_box);
+
+			let icon = gtk::Image::from_icon_name(Some(&icon), gtk::IconSize::Button);
+			button_box.add(&icon);
+
+			let label = gtk::Label::new(Some(&label));
+			label.set_halign(gtk::Align::Start);
+			button_box.add(&label);
+
+			dropdown.add(&button);
+		}
+
+		add_dropdown_button(&dropdown_box, "Log Out", 	"system-log-out-symbolic", 	"system.logout");
+		add_dropdown_button(&dropdown_box, "Shut Down", "system-shutdown-symbolic", "system.shutdown");
+		add_dropdown_button(&dropdown_box, "Restart", 	"system-reboot-symbolic", 	"system.restart");
 
 		dropdown_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 3);
 
-		let preferences_button = gtk::ModelButton::new();
-		preferences_button.set_property_text(Some("Preferences"));
-		preferences_button.set_action_name(Some("app.preferences"));
-		dropdown_box.add(&preferences_button);
-
-		let about_button = gtk::ModelButton::new();
-		about_button.set_property_text(Some("About Scout"));
-		about_button.set_action_name(Some("app.about"));
-		dropdown_box.add(&about_button);
+		add_dropdown_button(&dropdown_box, "Preferences", 	"preferences-system-symbolic", 	"app.preferences");
+		add_dropdown_button(&dropdown_box, "About Scout", 	"dialog-information-symbolic", 	"app.about");
 
 		dropdown_box.show_all();
 		profile.connect_clicked(move |_| dropdown.popup());
 
-		let profile_pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale(
-			&[ "/var/lib/AccountsService/icons/", &whoami::username() ].join(""), 32, 32, true);
-
-		match profile_pixbuf {
-			Ok(profile_pixbuf) => {
-				let profile_image = gtk::Image::from_pixbuf(Some(&profile_pixbuf));
-				profile.add(&profile_image);
-			}
-			Err(_) => {}
-		}
+		// Content containers layout //
 
 		let content_container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		content_container.set_widget_name("Content");
@@ -133,13 +148,14 @@ impl App {
 		preview_scroller.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
 		preview.pack_start(&preview_scroller, true, true, 0);
 
+		// Final configuration //
+
 		if preferences.opacity != 100 { App::enable_transparency(&window); }
 		window.show_all();
 
 		AppWidgets {
 			window, search,
 			results,
-			// preview,
 			results_scroller,
 			preview_scroller
 		}
@@ -159,7 +175,8 @@ impl App {
 		});
 
 		let app_clone = app.clone();
-		app_ref.widgets.search.connect_changed(move |_| if let Ok(mut app) = app_clone.try_borrow_mut() { app.search_changed(); });
+		app_ref.widgets.search.connect_changed(move |_|
+			if let Ok(mut app) = app_clone.borrow_mut() { app.search_changed(); });
 
 		let app_clone = app.clone();
 		app_ref.widgets.search.connect_activate(move |_| {
@@ -207,6 +224,21 @@ impl App {
 		about_action.connect_activate(|_, _| about::show_about());
 		actions.add_action(&about_action);
 
+		let actions = gio::SimpleActionGroup::new();
+		app_ref.widgets.window.insert_action_group("system", Some(&actions));
+
+		let logout_action = gio::SimpleAction::new("logout", None);
+		logout_action.connect_activate(move |_, _| drop(std::process::Command::new("xfce4-session-logout").spawn()));
+		actions.add_action(&logout_action);
+		
+		let shutdown_action = gio::SimpleAction::new("shutdown", None);
+		shutdown_action.connect_activate(move |_, _| drop(system_shutdown::shutdown()));
+		actions.add_action(&shutdown_action);
+
+		let restart_action = gio::SimpleAction::new("restart", None);
+		restart_action.connect_activate(move |_, _| drop(system_shutdown::reboot()));
+		actions.add_action(&restart_action);
+
 		let first = Shared::new(true);
 		let app_clone = app.clone();
 		application.connect_activate(move |_| {
@@ -235,6 +267,7 @@ impl App {
 		let mut plugins = Plugins::new();
 
 		plugins.load("target/debug/libscout_plugin_application.so").expect("Invocation Failed");
+		plugins.load("target/debug/libscout_plugin_directory.so").expect("Invocation Failed");
 		// plugins.load("target/debug/libscout_plugin_starter.so").expect("Invocation Failed");
 
 		let widgets = App::build_interface(&application, &preferences.borrow(), plugins.get_styles());
@@ -330,7 +363,6 @@ impl App {
 	fn show(&mut self) {
 		if !self.can_show() { return }
 
-		self.widgets.window.grab_focus();
 		self.widgets.window.show();
 		self.widgets.search.grab_focus();
 	}

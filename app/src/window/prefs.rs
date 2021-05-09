@@ -62,7 +62,11 @@ impl PrefsWindow {
 		prefs.borrow().add_page("Behavior",		&prefs_page::behavior(preferences.clone()));
 		prefs.borrow().add_page("Appearance",	&prefs_page::appearance(preferences.clone()));
 		prefs.borrow().add_page("Plugins",		&prefs_page::plugins(preferences.clone()));
-		prefs.borrow().add_page("Developer",	&prefs_page::developer(preferences.clone()));
+
+		if preferences.borrow().developer {
+			prefs.borrow().add_page("Developer",	&prefs_page::developer(preferences.clone()));
+		}
+
 		
 		window.show_all();
 

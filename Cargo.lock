@@ -128,9 +128,9 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "freedesktop_entry_parser"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db5c69c16a5ac0988394d994f76d0f8fa0aa21224e33ac5b359379a1f173bed0"
+checksum = "3e883ca77a4f5c28bc4e1c6b62f5cd5dffbaec2f1ceb498b7ca6538785453f3a"
 dependencies = [
  "nom",
  "thiserror",
@@ -566,6 +566,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af8b08b04175473088b46763e51ee54da5f9a164bc162f615b91bc179dbf15a3"
 
 [[package]]
+name = "opener"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13117407ca9d0caf3a0e74f97b490a7e64c0ae3aa90a8b7085544d0c37b6f3ae"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "pango"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -725,6 +734,7 @@ dependencies = [
  "scout-core",
  "serde",
  "serde_json",
+ "system_shutdown",
  "whoami",
 ]
 
@@ -755,13 +765,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "scout_plugin_starter"
+name = "scout_plugin_directory"
 version = "0.0.1"
 dependencies = [
+ "convert_case",
+ "dirs",
  "gdk-pixbuf",
+ "gio",
  "gtk",
+ "itertools 0.10.0",
+ "mime_guess",
+ "opener",
  "pango",
  "scout-core",
+ "shell-words",
 ]
 
 [[package]]
@@ -870,6 +887,15 @@ dependencies = [
  "thiserror",
  "toml",
  "version-compare",
+]
+
+[[package]]
+name = "system_shutdown"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "035e081d603551d8d78db27d2232913269c749ea67648c369100049820406a14"
+dependencies = [
+ "winapi",
 ]
 
 [[package]]

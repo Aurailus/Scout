@@ -32,7 +32,7 @@ pub fn style<T: IsA<gtk::Widget>>(window: &T, prefs: &Preferences, styles: Vec<&
 	s.push_str(&(prefs.opacity as f64 / 100.0).to_string());
 	s.push_str(");");
 
-	let style = include_str!("../style/.build.css");
+	let style = include_str!("../../style/.build.css");
 	s.push_str(style);
 	for style in styles {
 		s.push_str("\n");
