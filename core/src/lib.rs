@@ -33,6 +33,9 @@
  * That's it! Now your plugin can be built using `cargo build --all`, and the resultant .so can be loaded by Scout.
  */
 
+mod shared;
+pub use shared::Shared;
+
 mod plugin;
 pub use plugin::*;
 
@@ -52,16 +55,17 @@ pub struct PluginDeclaration {
 	pub rustc_version: &'static str,
 	pub core_version: &'static str,
 
-	pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar),
+	pub register: unsafe extern "C" fn(Shared<Box<dyn PluginBindings>>),
 }
 
 
-/** Passed into a library to allow it to register plugins. */
-pub trait PluginRegistrar {
+/** Allows a plugin to access the application. */
+pub trait PluginBindings {
 	fn register(&mut self, name: &str, function: Box<dyn Plugin>);
+
+	fn add_stylesheet(&mut self, stylesheet: &'static str);
 }
 
- 
 /** Exports a plugin for Scout to use. See the module documentation for usage details. */
 #[macro_export]
 macro_rules! export_plugin {

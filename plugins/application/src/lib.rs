@@ -4,12 +4,13 @@ use std::path::PathBuf;
 
 use freedesktop_entry_parser::parse_entry;
 
-use scout_core::{ Plugin, SearchResult, PluginRegistrar };
+use scout_core::{ Plugin, SearchResult, PluginBindings, Shared };
 
 mod result;
 use result::{ Action, ApplicationResult };
 
 pub struct ApplicationPlugin {
+	bindings: Shared<Box<dyn PluginBindings>>,
 	results: Vec<ApplicationResult>
 }
 
@@ -20,17 +21,17 @@ impl ApplicationPlugin {
 			.unwrap_or_else(|_| vec![]);
 		if let Some(dir) = dirs::data_dir() { search_paths.push(format!("{}/applications", dir.to_str().unwrap()).into()); }
 		else { search_paths.push(format!("/home/{}/.local/share/applications", &whoami::username()).into()); }
-		
+
 		let mut found = Vec::<ApplicationResult>::new();
 
 		while search_paths.len() != 0 {
 			let path = search_paths.pop().unwrap();
 			let dir_iter = scout_core::or_continue!(std::fs::read_dir(&path));
-			
+
 			for entry in dir_iter {
 				let entry = scout_core::or_continue!(entry);
 				let path = entry.path();
-				
+
 				if path.is_dir() {
 					search_paths.push(path);
 					continue;
@@ -53,7 +54,7 @@ impl ApplicationPlugin {
 							}
 						}).collect())
 					} else { None };
-					
+
 					let exec = entry.attr("Exec");
 					if exec.is_none() { continue; }
 
@@ -76,10 +77,11 @@ impl ApplicationPlugin {
 		found
 	}
 
-	fn new() -> Box<dyn Plugin> {
+	fn new(bindings: Shared<Box<dyn PluginBindings>>) -> Box<dyn Plugin> {
 		gtk::init().unwrap();
-		
+
 		Box::new(ApplicationPlugin {
+			bindings,
 			results: ApplicationPlugin::find_applications()
 		})
 	}
@@ -92,14 +94,17 @@ impl Plugin for ApplicationPlugin {
 			.filter(|(score, _)| *score > 0).collect::<Vec<(usize, Box<dyn SearchResult>)>>())
 	}
 
-	fn get_styles(&self) -> scout_core::Result<&'static str> {
-		Ok(include_str!("../style/.build.css"))
-	}
+	// fn get_styles(&self) -> scout_core::Result<&'static str> {
+	// 	Ok(include_str!("../style/.build.css"))
+	// }
 }
 
 #[allow(improper_ctypes_definitions)]
-extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
-	registrar.register("application", ApplicationPlugin::new());
+extern "C" fn register(bindings_shr: Shared<Box<dyn PluginBindings>>) {
+	let mut bindings = bindings_shr.borrow_mut();
+	let app = ApplicationPlugin::new(bindings_shr.clone());
+	bindings.add_stylesheet(include_str!("../style/.build.css"));
+	bindings.register("Application", app);
 }
 
 scout_core::export_plugin!(register);

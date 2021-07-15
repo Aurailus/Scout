@@ -6,7 +6,7 @@ use crate::SearchResult;
 
 #[derive(Debug)]
 pub enum InvocationError {
-	
+
 	/** Used when the plugin does not implement the feature requested. */
 	DoesNotProvide(String),
 
@@ -41,13 +41,13 @@ pub trait Plugin {
 	 *
 	 * - `query` - The search query, transformed to ascii-lowercase.
 	 */
-	
+
 	fn get_results(&self, query: &str) -> Result<Vec<(usize, Box<dyn SearchResult>)>>;
 
 
-	/**
-	 * Gets a plugin's custom CSS.
-	 */
- 
-	 fn get_styles(&self) -> Result<&'static str>;
+	// /**
+	//  * Gets a plugin's custom CSS.
+	//  */
+
+	//  fn get_styles(&self) -> Result<&'static str>;
 }

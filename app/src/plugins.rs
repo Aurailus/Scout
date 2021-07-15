@@ -4,15 +4,16 @@
  */
 
 use std::rc::Rc;
-use std::collections::{ HashMap, HashSet };
+use std::collections::HashMap;
 
-use scout_core::{ Plugin, SearchResult, Result };
+use scout_core::{ Plugin, SearchResult, Result, Shared };
 
+use super::window::App;
 
 /** Proxy for a Plugin that keeps it's Library loaded. */
 struct PluginProxy {
 	plugin: Box<dyn Plugin>,
-	_lib: Rc<libloading::Library>,
+	_lib: Rc<libloading::Library>
 }
 
 impl Plugin for PluginProxy {
@@ -20,28 +21,36 @@ impl Plugin for PluginProxy {
 		self.plugin.get_results(query)
 	}
 
-	fn get_styles(&self) -> Result<&'static str> {
-		self.plugin.get_styles()
+	// fn get_styles(&self) -> Result<&'static str> {
+	// 	self.plugin.get_styles()
+	// }
+}
+
+
+/**
+ * Allows a plugin to access the application.
+ */
+
+struct PluginBindings {
+	app: Shared<App>,
+	lib: Rc<libloading::Library>,
+	plugins: HashMap<String, PluginProxy>
+}
+
+impl PluginBindings {
+	fn new(app: Shared<App>, lib: Rc<libloading::Library>) -> PluginBindings {
+		PluginBindings { app, lib, plugins: HashMap::new() }
 	}
 }
 
-
-/** Passed into a library to allow it to register plugins. */
-struct PluginRegistrar {
-	plugins: HashMap<String, PluginProxy>,
-	lib: Rc<libloading::Library>
-}
-
-impl PluginRegistrar {
-	fn new(lib: Rc<libloading::Library>) -> PluginRegistrar {
-		PluginRegistrar { lib, plugins: HashMap::default() }
-	}
-}
-
-impl scout_core::PluginRegistrar for PluginRegistrar {
+impl scout_core::PluginBindings for PluginBindings {
 	fn register(&mut self, name: &str, plugin: Box<dyn Plugin>) {
 		let proxy = PluginProxy { plugin, _lib: Rc::clone(&self.lib) };
 		self.plugins.insert(name.to_owned(), proxy);
+	}
+
+	fn add_stylesheet(&mut self, stylesheet: &'static str) {
+		println!("{}", stylesheet);
 	}
 }
 
@@ -52,39 +61,38 @@ impl scout_core::PluginRegistrar for PluginRegistrar {
  */
 
 #[derive(Default)]
-pub struct Plugins {
-	plugins: HashMap<String, PluginProxy>,
+pub struct PluginParser {
 	libraries: Vec<Rc<libloading::Library>>,
 }
 
-impl Plugins {
-	pub fn new() -> Plugins { Plugins::default() }
+impl PluginParser {
+	pub fn new() -> PluginParser { PluginParser::default() }
 
 	/**
 	 * Attempts to load a plugin at the specified path.
 	 * Returns a result containing the plugins loaded, or an error.
 	 */
 
-	pub fn load<P: AsRef<std::ffi::OsStr>>(&mut self, library_path: P) -> std::io::Result<HashSet<String>> {
+	pub fn load<P: AsRef<std::ffi::OsStr>>(&mut self, app: Shared<App>, library_path: P)
+		-> std::io::Result<()> {
 		unsafe {
 			let library = Rc::new(libloading::Library::new(library_path)
 				.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?);
-	
+
 			let decl = library.get::<*mut scout_core::PluginDeclaration>(b"PLUGIN_DECLARATION\0")
 				.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?.read();
-	
+
 			if decl.rustc_version != scout_core::RUSTC_VERSION || decl.core_version != scout_core::CORE_VERSION {
 				return Err(std::io::Error::new(std::io::ErrorKind::Other, "Plugin Version Mismatch.")); }
-	
-			let mut registrar = PluginRegistrar::new(Rc::clone(&library));
-			(decl.register)(&mut registrar);
-	
-			let loaded = registrar.plugins.iter().map(|(k, _)| k.clone()).collect::<HashSet<_>>();
-	
-			self.plugins.extend(registrar.plugins);
+
+			let registrar: Shared<Box<dyn scout_core::PluginBindings>> =
+				Shared::new(Box::new(PluginBindings::new(app.clone(), Rc::clone(&library))));
+
+			(decl.register)(registrar.clone());
+
 			self.libraries.push(library);
-	
-			Ok(loaded)
+
+			Ok(())
 		}
 	}
 
@@ -93,7 +101,8 @@ impl Plugins {
 	 */
 
 	pub fn get_styles(&self) -> Vec<&'static str> {
-		self.plugins.iter().map(|(_, p)| p.get_styles()).filter(|p| p.is_ok()).map(|p| p.unwrap()).collect::<_>()
+		// self.plugins.iter().map(|(_, p)| p.get_styles()).filter(|p| p.is_ok()).map(|p| p.unwrap()).collect::<_>()
+		vec![]
 	}
 
 	/**
@@ -104,11 +113,11 @@ impl Plugins {
 	pub fn get_results(&self, query: &str) -> Vec<(usize, Box<dyn SearchResult>)> {
 		let mut results = vec![];
 
-		for tuple in self.plugins.iter() {
-			let res = scout_core::or_continue!(tuple.1.get_results(query));
-			results.extend(res);
-		}
-		
+		// for tuple in self.plugins.iter() {
+		// 	let res = scout_core::or_continue!(tuple.1.get_results(query));
+		// 	results.extend(res);
+		// }
+
 		results
 	}
 }

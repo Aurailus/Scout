@@ -1,7 +1,7 @@
 use gtk::prelude::*;
 use std::os::unix::process::CommandExt;
 
-use crate::shared::Shared;
+use scout_core::Shared;
 use crate::preferences::Preferences;
 
 use super::style;
@@ -43,7 +43,7 @@ impl PrefsWindow {
 
 		let overlay = gtk::Overlay::new();
 		window.add(&overlay);
-		
+
 		let notebook = gtk::Notebook::new();
 		notebook.set_tab_pos(gtk::PositionType::Left);
 		notebook.set_widget_name("Preferences");
@@ -67,7 +67,7 @@ impl PrefsWindow {
 			prefs.borrow().add_page("Developer",	&prefs_page::developer(preferences.clone()));
 		}
 
-		
+
 		window.show_all();
 
 		prefs

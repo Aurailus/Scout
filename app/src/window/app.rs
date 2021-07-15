@@ -7,8 +7,8 @@ use super::about;
 use super::style;
 use super::prefs::PrefsWindow;
 
-use crate::shared::Shared;
-use crate::plugins::Plugins;
+use scout_core::Shared;
+// use crate::plugins::Plugins;
 use crate::preferences::Preferences;
 
 static WIDTH: i32 = 700;
@@ -24,8 +24,8 @@ pub struct AppWidgets {
 }
 
 pub struct App {
-	widgets: AppWidgets,
-	plugins: Plugins,
+	widgets: Option<AppWidgets>,
+	// plugins: Plugins,
 	preferences: Shared<Preferences>,
 
 	results: Vec<(usize, Box<dyn SearchResult>)>,
@@ -35,8 +35,8 @@ pub struct App {
 }
 
 impl App {
-	fn build_interface(application: &gtk::Application, preferences: &Preferences, styles: Vec<&'static str>) -> AppWidgets {
-		
+	fn build_interface(&mut self, application: &gtk::Application, styles: Vec<&'static str>) {
+
 		// Basic window configuration //
 
 		let window = gtk::ApplicationWindow::new(application);
@@ -47,11 +47,11 @@ impl App {
 		window.set_title("Scout");
 		window.get_style_context().add_class("Scout");
 
-		window.set_skip_taskbar_hint(preferences.hide_on_unfocus);
-		window.set_skip_pager_hint(preferences.hide_on_unfocus);
-		window.set_keep_above(preferences.always_on_top);
-		
-		style::style(&window, &preferences, styles);
+		window.set_skip_taskbar_hint(self.preferences.borrow().hide_on_unfocus);
+		window.set_skip_pager_hint(self.preferences.borrow().hide_on_unfocus);
+		window.set_keep_above(self.preferences.borrow().always_on_top);
+
+		style::style(&window, &self.preferences.borrow(), styles);
 
 		let app_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		window.add(&app_container);
@@ -95,7 +95,7 @@ impl App {
 			button.get_style_context().add_class("flat");
 			button.get_style_context().add_class("model");
 			button.set_action_name(Some(&action));
-			
+
 			let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
 			button.add(&button_box);
 
@@ -150,22 +150,22 @@ impl App {
 
 		// Final configuration //
 
-		if preferences.opacity != 100 { App::enable_transparency(&window); }
+		if self.preferences.borrow().opacity != 100 { App::enable_transparency(&window); }
 		window.show_all();
 
-		AppWidgets {
+		self.widgets = Some(AppWidgets {
 			window, search,
 			results,
 			results_scroller,
 			preview_scroller
-		}
+		})
 	}
 
-	fn bind_interface(application: &gtk::Application, app: Shared<App>) {
-		let app_ref = app.borrow();
+	fn bind_interface(&self, application: &gtk::Application, app: Shared<App>) {
+		let widgets = self.widgets.as_ref().unwrap();
 
-		let results_scroller_clone = app_ref.widgets.results_scroller.clone();
-		app_ref.widgets.search.connect_property_has_focus_notify(move |search| {
+		let results_scroller_clone = widgets.results_scroller.clone();
+		widgets.search.connect_property_has_focus_notify(move |search| {
 			if search.has_focus() {
 				results_scroller_clone.get_style_context().add_class("focus");
 				let adj = results_scroller_clone.get_vadjustment().unwrap();
@@ -175,26 +175,26 @@ impl App {
 		});
 
 		let app_clone = app.clone();
-		app_ref.widgets.search.connect_changed(move |_|
-			if let Ok(mut app) = app_clone.borrow_mut() { app.search_changed(); });
+		widgets.search.connect_changed(move |_|
+			if let Ok(mut app) = app_clone.try_borrow_mut() { app.search_changed(); });
 
 		let app_clone = app.clone();
-		app_ref.widgets.search.connect_activate(move |_| {
+		widgets.search.connect_activate(move |_| {
 			let app = app_clone.borrow();
 			if app.results.len() > 0 { app.results[0].1.activate(); }
 		});
 
 		let app_clone = app.clone();
-		app_ref.widgets.search.connect_key_press_event(move |_, key| {
+		widgets.search.connect_key_press_event(move |_, key| {
 			if key.get_keyval() == gdk::keys::constants::Down {
-				app_clone.borrow().widgets.results.child_focus(gtk::DirectionType::Down);
+				app_clone.borrow().widgets.as_ref().unwrap().results.child_focus(gtk::DirectionType::Down);
 				gtk::Inhibit(true)
 			}
 			else { gtk::Inhibit(false) }
 		});
 
-		let search_clone = app_ref.widgets.search.clone();
-		app_ref.widgets.results.connect_key_press_event(move |_, key| {
+		let search_clone = widgets.search.clone();
+		widgets.results.connect_key_press_event(move |_, key| {
 			let keyval = key.get_keyval();
 			if keyval >= gdk::keys::constants::A && keyval <= gdk::keys::constants::z {
 				search_clone.grab_focus();
@@ -209,7 +209,7 @@ impl App {
 		});
 
 		let actions = gio::SimpleActionGroup::new();
-		app_ref.widgets.window.insert_action_group("app", Some(&actions));
+		widgets.window.insert_action_group("app", Some(&actions));
 
 		let app_clone = app.clone();
 		let preferences_action = gio::SimpleAction::new("preferences", None);
@@ -225,12 +225,12 @@ impl App {
 		actions.add_action(&about_action);
 
 		let actions = gio::SimpleActionGroup::new();
-		app_ref.widgets.window.insert_action_group("system", Some(&actions));
+		widgets.window.insert_action_group("system", Some(&actions));
 
 		let logout_action = gio::SimpleAction::new("logout", None);
 		logout_action.connect_activate(move |_, _| drop(std::process::Command::new("xfce4-session-logout").spawn()));
 		actions.add_action(&logout_action);
-		
+
 		let shutdown_action = gio::SimpleAction::new("shutdown", None);
 		shutdown_action.connect_activate(move |_, _| drop(system_shutdown::shutdown()));
 		actions.add_action(&shutdown_action);
@@ -251,43 +251,33 @@ impl App {
 				else { app.hide() }
 			}
 		});
-		
-		if app_ref.preferences.borrow().hide_on_unfocus {
+
+		if self.preferences.borrow().hide_on_unfocus {
 			let app_clone = app.clone();
-			app_ref.widgets.window.connect_focus_out_event(move |_, _| {
+			widgets.window.connect_focus_out_event(move |_, _| {
 				app_clone.borrow_mut().hide();
 				Inhibit(false)
 			});
 		}
 	}
 
-	pub fn new(application: &gtk::Application) -> Shared<Self> {
-		let preferences = Preferences::new(None);
-		
-		let mut plugins = Plugins::new();
-
-		plugins.load("target/debug/libscout_plugin_application.so").expect("Invocation Failed");
-		plugins.load("target/debug/libscout_plugin_directory.so").expect("Invocation Failed");
-		// plugins.load("target/debug/libscout_plugin_starter.so").expect("Invocation Failed");
-
-		let widgets = App::build_interface(&application, &preferences.borrow(), plugins.get_styles());
-
-		let app = Shared::new(App {
-			widgets, plugins, preferences,
-
+	pub fn new() -> Shared<Self> {
+		Shared::new(App {
+			widgets: None,
+			preferences: Preferences::new(None),
 			results: vec![],
-			top_result_focus_id: None,
+			last_hide: 0,
+			top_result_focus_id: None
+		})
+	}
 
-			last_hide: 0
-		});
-
-		App::bind_interface(&application, app.clone());
-
-		app
+	pub fn init(&mut self, bind_ref: Shared<App>, application: &gtk::Application) {
+		self.build_interface(&application, vec![]);
+		self.bind_interface(&application, bind_ref);
 	}
 
 	fn search_changed(&mut self) {
-		let query = &self.widgets.search.get_text();
+		let query = &self.widgets.as_ref().unwrap().search.get_text();
 
 		// Clear current results
 		if self.results.len() > 0 && self.top_result_focus_id.is_some() {
@@ -296,11 +286,14 @@ impl App {
 			self.top_result_focus_id = None;
 		}
 
-		self.widgets.results.get_children().iter().for_each(|c| self.widgets.results.remove(c));
-		self.widgets.preview_scroller.get_children().iter().for_each(|c| self.widgets.preview_scroller.remove(c));
+		self.widgets.as_ref().unwrap().results.get_children().iter()
+			.for_each(|c| self.widgets.as_ref().unwrap().results.remove(c));
+		self.widgets.as_ref().unwrap().preview_scroller.get_children().iter()
+			.for_each(|c| self.widgets.as_ref().unwrap().preview_scroller.remove(c));
 
 		// Filter programs into search results.
-		let mut results = self.plugins.get_results(&query);
+		let mut results: Vec<(usize, Box<dyn SearchResult>)> = vec![];
+		// let mut results = self.plugins.get_results(&query);
 		results.retain(|(score, _)| *score > 0);
 		results.sort_by(|(a, _), (b, _)| b.partial_cmp(a).unwrap());
 		let min = std::cmp::max(if results.len() >= 1 { (results[0].0 as f64 * 0.75) as usize } else { 0 }, query.len() * 5);
@@ -308,15 +301,15 @@ impl App {
 		self.results = results;
 
 		if self.results.len() > 0 {
-			self.widgets.preview_scroller.add(&self.results[0].1.get_preview_widget());
+			self.widgets.as_ref().unwrap().preview_scroller.add(&self.results[0].1.get_preview_widget());
 
 			for (i, res) in self.results.iter().enumerate() {
 				res.1.set_first(i == 0);
-				self.widgets.results.pack_start(&res.1.get_result_widget(), false, false, 0);
+				self.widgets.as_ref().unwrap().results.pack_start(&res.1.get_result_widget(), false, false, 0);
 			}
 
-			self.widgets.results.show_all();
-			self.widgets.preview_scroller.show_all();
+			self.widgets.as_ref().unwrap().results.show_all();
+			self.widgets.as_ref().unwrap().preview_scroller.show_all();
 		}
 	}
 
@@ -345,16 +338,16 @@ impl App {
 	}
 
 	fn is_active(&self) -> bool {
-		self.widgets.window.get_focus().is_some() && self.widgets.window.is_visible()
+		self.widgets.as_ref().unwrap().window.get_focus().is_some() && self.widgets.as_ref().unwrap().window.is_visible()
 	}
 
 	fn hide(&mut self) {
-		if !self.widgets.window.is_visible() { return }
+		if !self.widgets.as_ref().unwrap().window.is_visible() { return }
 
-		self.widgets.window.hide();
+		self.widgets.as_ref().unwrap().window.hide();
 		self.last_hide = glib::get_monotonic_time();
 
-		let search = self.widgets.search.clone();
+		let search = self.widgets.as_ref().unwrap().search.clone();
 		drop(self);
 
 		search.set_text("");
@@ -363,7 +356,7 @@ impl App {
 	fn show(&mut self) {
 		if !self.can_show() { return }
 
-		self.widgets.window.show();
-		self.widgets.search.grab_focus();
+		self.widgets.as_ref().unwrap().window.show();
+		self.widgets.as_ref().unwrap().search.grab_focus();
 	}
 }

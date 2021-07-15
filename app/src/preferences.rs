@@ -1,7 +1,7 @@
 use std::io::{ Read, Write, Seek, SeekFrom };
 use serde::{ Serialize, Deserialize };
 
-use crate::shared::Shared;
+use scout_core::Shared;
 
 fn default_opacity() -> u32 { 90 }
 
@@ -13,7 +13,7 @@ fn default_developer() -> bool { false }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Preferences {
-	
+
 	#[serde(skip_serializing, default)]
 	pub path: std::path::PathBuf,
 
@@ -34,7 +34,7 @@ impl Preferences {
 	pub fn new(path: Option<&std::path::Path>) -> Shared<Self> {
 		let path = path.and_then(|path| Some(path.to_owned()))
 			.unwrap_or_else(|| std::path::Path::new(&[ "/home/", &whoami::username(), "/.config/scout.conf" ].join("")).to_owned());
-		
+
 		let mut file = std::fs::OpenOptions::new().read(true).write(true).create(true).open(&path).unwrap();
 		let mut contents = String::new();
 		drop(file.read_to_string(&mut contents));

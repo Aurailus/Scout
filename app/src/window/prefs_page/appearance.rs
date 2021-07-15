@@ -1,6 +1,6 @@
 use gtk::prelude::*;
 
-use crate::shared::Shared;
+use scout_core::Shared;
 use crate::preferences::Preferences;
 
 pub fn appearance(prefs: Shared<Preferences>) -> gtk::Box {

@@ -1,4 +1,4 @@
-use core::{ Plugin, SearchResult, PluginRegistrar };
+use core::{ Plugin, SearchResult, PluginBindings, Shared };
 
 use std::path::PathBuf;
 
@@ -20,7 +20,7 @@ impl DirectoryPlugin {
 
 	fn new() -> Box<dyn Plugin> {
 		gtk::init().unwrap();
-		
+
 		let mut plugin = Box::new(DirectoryPlugin {
 			results: vec![]
 		});
@@ -51,14 +51,14 @@ impl Plugin for DirectoryPlugin {
 		)
 	}
 
-	fn get_styles(&self) -> core::Result<&'static str> {
-		Ok(include_str!("../style/.build.css"))
-	}
+	// fn get_styles(&self) -> core::Result<&'static str> {
+	// 	Ok(include_str!("../style/.build.css"))
+	// }
 }
 
 #[allow(improper_ctypes_definitions)]
-extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
-	registrar.register("directory", DirectoryPlugin::new());
+extern "C" fn register(registrar: Shared<Box<dyn PluginBindings>>) {
+	registrar.borrow_mut().register("directory", DirectoryPlugin::new());
 }
 
 core::export_plugin!(register);
