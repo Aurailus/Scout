@@ -10,6 +10,9 @@ pub enum InvocationError {
 	/** Used when the plugin does not implement the feature requested. */
 	DoesNotProvide(String),
 
+	/** Used when the plugin was not registered properly. */
+	RegistrationFailed,
+
 	/** Generic error. */
 	Other(String)
 }
@@ -42,7 +45,7 @@ pub trait Plugin {
 	 * - `query` - The search query, transformed to ascii-lowercase.
 	 */
 
-	fn get_results(&self, query: &str) -> Result<Vec<(usize, Box<dyn SearchResult>)>>;
+	fn get_results(&self, query: &str) -> Result<Vec<Box<dyn SearchResult>>>;
 
 
 	// /**

@@ -4,13 +4,13 @@
  */
 
 pub trait SearchResult {
-	
+
 	/**
-	 * Returns a computed ranking for the given search query.
-	 * The ranking is used to determine if and where the result appears.
+	 * Returns the score of the result, as determined by the plugin.
+	 * Higher scores indicate a higher relevance.
 	 */
 
-	fn get_ranking(&self, query: &str) -> usize;
+	fn get_score(&self) -> usize;
 
 
 	/**
@@ -21,8 +21,8 @@ pub trait SearchResult {
 	 */
 
 	fn set_first(&self, first: bool) -> ();
-	
-	
+
+
 	/**
 	 * Triggers the primary action of the result widget.
 	 * This is triggered on the first result when activating the search entry.
@@ -30,7 +30,7 @@ pub trait SearchResult {
 
 	fn activate(&self) -> ();
 
-	
+
 	/**
 	 * Returns a widget representing the result in the results pane.
 	 */

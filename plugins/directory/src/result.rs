@@ -17,7 +17,9 @@ pub struct DirectoryResult {
 	path: std::path::PathBuf,
 
 	widget: gtk::Box,
-	top_button: gtk::Button
+	top_button: gtk::Button,
+
+	score: usize
 }
 
 impl DirectoryResult {
@@ -25,13 +27,13 @@ impl DirectoryResult {
 	/**
 	 *
 	 */
-	
+
 	pub fn get_file_icon(path: &std::path::Path) -> String {
 		let mime_type = mime_guess::from_path(&path).first()
 			.and_then(|mime| Some(mime.to_string())).get_or_insert(String::new()).clone();
 
 		if mime_type.is_empty() { return "folder".to_owned(); }
-		
+
 		let content_type = gio::content_type_from_mime_type(&mime_type.to_string()).unwrap().to_string();
 		let icon = gio::content_type_get_icon(&content_type).unwrap().downcast::<gio::ThemedIcon>().unwrap()
 			.get_names().first().and_then(|s| Some(s.to_string()));
@@ -43,7 +45,7 @@ impl DirectoryResult {
 	/**
 	 *
 	 */
-	
+
 	pub fn get_dir_icon(description: &str) -> &'static str {
 		match description {
 			"Home" => "user-home",
@@ -96,17 +98,17 @@ impl DirectoryResult {
 	pub fn new(description: Option<&str>, path: &std::path::Path) -> Self {
 		let description = description.unwrap_or_else(|| path.file_name().unwrap().to_str().unwrap()).to_owned();
 		let icon = DirectoryResult::get_dir_icon(&description).to_owned();
-		
+
 		let home_str = dirs::home_dir().and_then(|dir| Some(dir.to_str().unwrap().to_owned())).unwrap();
 		let mut path_str = format!("{}/", path.to_str().unwrap().to_owned());
 		if path_str.starts_with(&home_str) && path_str.len() > home_str.len() + 1 { path_str = path_str[home_str.len() + 1..].to_owned(); }
-		
+
 		let files = DirectoryResult::get_suggested_files(&path);
 
 		let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		widget.get_style_context().add_class("Application");
 		widget.set_widget_name("SearchResult");
-		
+
 		let top_button = gtk::Button::new();
 		top_button.get_style_context().add_class("flat");
 		widget.pack_start(&top_button, true, true, 0);
@@ -151,7 +153,7 @@ impl DirectoryResult {
 						widget_action_button.get_style_context().add_class("flat");
 						widget_action_button.get_style_context().add_class("ActionButton");
 						widget_actions.pack_start(&widget_action_button, true, true, 0);
-						
+
 						let path_clone = file.path.clone();
 						widget_action_button.connect_clicked(move |_| drop(opener::open(path_clone.to_str().unwrap())));
 
@@ -180,13 +182,12 @@ impl DirectoryResult {
 			description, icon,
 			path: path.to_owned(),
 			path_str,
-			top_button, widget
+			top_button, widget,
+			score: 0
 		}
 	}
-}
 
-impl SearchResult for DirectoryResult {
-	fn get_ranking(&self, query: &str) -> usize {
+	pub fn set_score_from_query(&mut self, query: &str) {
 		let mut score = 0;
 		let mut last_letter_ind: usize = 0;
 		let mut lowercase_name = self.description.to_lowercase();
@@ -201,7 +202,13 @@ impl SearchResult for DirectoryResult {
 			}
 		}
 
-		score
+		self.score = score;
+	}
+}
+
+impl SearchResult for DirectoryResult {
+	fn get_score(&self) -> usize {
+		self.score
 	}
 
 	fn set_first(&self, first: bool) -> () {

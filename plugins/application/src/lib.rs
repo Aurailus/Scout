@@ -88,23 +88,26 @@ impl ApplicationPlugin {
 }
 
 impl Plugin for ApplicationPlugin {
-	fn get_results(&self, query: &str) -> scout_core::Result<Vec<(usize, Box<dyn SearchResult>)>> {
+	fn get_results(&self, query: &str) -> scout_core::Result<Vec<Box<dyn SearchResult>>> {
 		let query = query.to_lowercase().replace(' ', "");
-		Ok(self.results.iter().map(|app| (app.get_ranking(&query), Box::new(app.clone()) as Box<dyn SearchResult>))
-			.filter(|(score, _)| *score > 0).collect::<Vec<(usize, Box<dyn SearchResult>)>>())
+		Ok(self.results.iter()
+			.map(|res| {
+				let mut result = res.clone();
+				result.set_score_from_query(&query);
+				Box::new(result) as Box<dyn SearchResult>
+			})
+			.filter(|result| result.get_score() > 0)
+			.collect::<Vec<Box<dyn SearchResult>>>()
+		)
 	}
-
-	// fn get_styles(&self) -> scout_core::Result<&'static str> {
-	// 	Ok(include_str!("../style/.build.css"))
-	// }
 }
 
 #[allow(improper_ctypes_definitions)]
 extern "C" fn register(bindings_shr: Shared<Box<dyn PluginBindings>>) {
 	let mut bindings = bindings_shr.borrow_mut();
-	let app = ApplicationPlugin::new(bindings_shr.clone());
+	let plugin = ApplicationPlugin::new(bindings_shr.clone());
 	bindings.add_stylesheet(include_str!("../style/.build.css"));
-	bindings.register("Application", app);
+	bindings.register("application", plugin);
 }
 
 scout_core::export_plugin!(register);

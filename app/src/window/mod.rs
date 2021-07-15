@@ -3,8 +3,8 @@ mod style;
 mod prefs_page;
 pub use prefs_page::*;
 
-mod app;
-pub use app::*;
+mod window;
+pub use window::*;
 
 mod about;
 pub use about::*;

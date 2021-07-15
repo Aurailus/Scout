@@ -52,7 +52,9 @@ pub struct ApplicationResult {
 	actions: Option<Vec<Action>>,
 
 	widget: gtk::Box,
-	top_button: gtk::Button
+	top_button: gtk::Button,
+
+	score: usize
 }
 
 impl ApplicationResult {
@@ -80,7 +82,7 @@ impl ApplicationResult {
 	/**
 	 * Finds an icon from an icon name specified in the desktop file.
 	 */
-	
+
 	pub fn get_icon(icon: Option<&str>, scale: i32) -> gtk::Image {
 		let flags = gtk::IconLookupFlags::USE_BUILTIN | gtk::IconLookupFlags::GENERIC_FALLBACK | gtk::IconLookupFlags::FORCE_SIZE;
 		let theme = gtk::IconTheme::get_default().unwrap();
@@ -99,7 +101,7 @@ impl ApplicationResult {
 
 	pub fn new(name: &str, description: &str, category: &str,
 		exec: &str, icon: Option<&str>, actions: Option<Vec<Action>>) -> Self {
-		
+
 		let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		widget.get_style_context().add_class("Application");
 		widget.set_widget_name("SearchResult");
@@ -189,13 +191,12 @@ impl ApplicationResult {
 			exec: exec.to_owned(),
 			top_button,
 			actions,
-			widget
+			widget,
+			score: 0
 		}
 	}
-}
 
-impl SearchResult for ApplicationResult {
-	fn get_ranking(&self, query: &str) -> usize {
+	pub fn set_score_from_query(&mut self, query: &str) {
 		let mut score = 0;
 		let mut last_letter_ind: usize = 0;
 		let mut lowercase_name = self.name.to_lowercase();
@@ -210,7 +211,14 @@ impl SearchResult for ApplicationResult {
 			}
 		}
 
-		score
+		self.score = score
+	}
+
+}
+
+impl SearchResult for ApplicationResult {
+	fn get_score(&self) -> usize {
+		self.score
 	}
 
 	fn set_first(&self, first: bool) -> () {

@@ -4,7 +4,7 @@ use gtk::prelude::*;
 
 use crate::preferences::Preferences;
 
-pub fn style<T: IsA<gtk::Widget>>(window: &T, prefs: &Preferences, styles: Vec<&'static str>) {
+pub fn style<T: IsA<gtk::Widget>>(window: &T, prefs: &Preferences, styles: &Vec<&'static str>) {
 	let provider = gtk::CssProvider::new();
 
 	let mut s = String::new();
@@ -19,7 +19,7 @@ pub fn style<T: IsA<gtk::Widget>>(window: &T, prefs: &Preferences, styles: Vec<&
 
 	let entry = gtk::Entry::new();
 	let button = gtk::Button::new();
-	
+
 	add_color("c-neutral-000", &button.get_style_context().get_border_color(gtk::StateFlags::NORMAL));
 	add_color("c-neutral-100", &window.get_style_context().get_background_color(gtk::StateFlags::NORMAL));
 	add_color("c-neutral-900", &entry.get_style_context().get_color(gtk::StateFlags::NORMAL));

@@ -6,6 +6,7 @@ mod result;
 use result::{ DirectoryResult };
 
 pub struct DirectoryPlugin {
+	bindings: Shared<Box<dyn PluginBindings>>,
 	results: Vec<DirectoryResult>
 }
 
@@ -18,10 +19,11 @@ impl DirectoryPlugin {
 		}
 	}
 
-	fn new() -> Box<dyn Plugin> {
+	fn new(bindings: Shared<Box<dyn PluginBindings>>) -> Box<dyn Plugin> {
 		gtk::init().unwrap();
 
 		let mut plugin = Box::new(DirectoryPlugin {
+			bindings,
 			results: vec![]
 		});
 
@@ -42,23 +44,32 @@ impl DirectoryPlugin {
 }
 
 impl Plugin for DirectoryPlugin {
-	fn get_results(&self, query: &str) -> core::Result<Vec<(usize, Box<dyn SearchResult>)>> {
+	fn get_results(&self, query: &str) -> core::Result<Vec<Box<dyn SearchResult>>> {
 		let query = query.to_lowercase().replace(' ', "");
 		Ok(self.results.iter()
-			.map(|app| (app.get_ranking(&query), Box::new(app.clone()) as Box<dyn SearchResult>))
-			.filter(|(score, _)| *score > 0)
-			.collect::<Vec<(usize, Box<dyn SearchResult>)>>()
+			.map(|res| {
+				let mut result = res.clone();
+				result.set_score_from_query(&query);
+				Box::new(result) as Box<dyn SearchResult>
+			})
+			.filter(|result| result.get_score() > 0)
+			.collect::<Vec<Box<dyn SearchResult>>>()
 		)
-	}
 
-	// fn get_styles(&self) -> core::Result<&'static str> {
-	// 	Ok(include_str!("../style/.build.css"))
-	// }
+		// Ok(self.results.iter()
+		// 	.map(|app| (app.get_ranking(&query), Box::new(app.clone()) as Box<dyn SearchResult>))
+		// 	.filter(|(score, _)| *score > 0)
+		// 	.collect::<Vec<(usize, Box<dyn SearchResult>)>>()
+		// )
+	}
 }
 
 #[allow(improper_ctypes_definitions)]
-extern "C" fn register(registrar: Shared<Box<dyn PluginBindings>>) {
-	registrar.borrow_mut().register("directory", DirectoryPlugin::new());
+extern "C" fn register(bindings_shr: Shared<Box<dyn PluginBindings>>) {
+	let mut bindings = bindings_shr.borrow_mut();
+	let plugin = DirectoryPlugin::new(bindings_shr.clone());
+	bindings.add_stylesheet(include_str!("../style/.build.css"));
+	bindings.register("directory", plugin);
 }
 
 core::export_plugin!(register);

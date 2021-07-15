@@ -64,6 +64,8 @@ pub trait PluginBindings {
 	fn register(&mut self, name: &str, function: Box<dyn Plugin>);
 
 	fn add_stylesheet(&mut self, stylesheet: &'static str);
+
+	fn get_plugin(&self) -> Result<(&str, Shared<Box<dyn Plugin>>)>;
 }
 
 /** Exports a plugin for Scout to use. See the module documentation for usage details. */

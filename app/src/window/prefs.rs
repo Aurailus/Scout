@@ -30,7 +30,7 @@ impl PrefsWindow {
 		window.set_title("Scout Preferences");
 		window.set_default_size(WIDTH, HEIGHT);
 		window.set_resizable(false);
-		style::style(&window, &preferences.borrow(), vec![]);
+		style::style(&window, &preferences.borrow(), &vec![]);
 
 		let header = gtk::HeaderBar::new();
 		header.set_title(Some("Scout Preferences"));

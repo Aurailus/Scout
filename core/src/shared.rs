@@ -4,10 +4,9 @@
  */
 
 use std::fmt;
-use std::rc::Rc;
 use std::ops::Deref;
+use std::rc::{ Rc, Weak };
 use std::cell::{ RefCell, Ref, RefMut, BorrowMutError };
-
 
 /**
  * Represents a shared pointer to an object
@@ -38,6 +37,25 @@ impl <T> Shared<T> {
 
 	pub fn borrow(&self) -> Ref<T> {
 		self.v.borrow()
+	}
+
+
+	/**
+	 * Gets a weak reference to this shared object.
+	 */
+
+	pub fn get_weak(&self) -> WeakShared<T> {
+		WeakShared::new(&self.v)
+	}
+
+
+	/**
+	 * Creates a shared from a weak reference.
+	 */
+
+	pub fn from_weak(weak: &WeakShared<T>) -> Result<Shared<T>, ()> {
+		let val = weak.v.upgrade();
+		if val.is_some() { Ok(Shared { v: val.unwrap() }) } else { Err(()) }
 	}
 
 
@@ -106,5 +124,27 @@ impl <T: fmt::Display> fmt::Display for Shared<T> {
 impl <T: fmt::Debug> fmt::Debug for Shared<T> {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "{:?}", self.deref())
+	}
+}
+
+/**
+ * Represents a weak pointer to a shared pointer.
+ */
+
+#[derive(Clone)]
+pub struct WeakShared<T> {
+	v: Weak<RefCell<T>>
+}
+
+impl <T> WeakShared<T> {
+
+	pub fn new(v: &Rc<RefCell<T>>) -> Self {
+		WeakShared {
+			v: Rc::downgrade(v)
+		}
+	}
+
+	pub fn to_shared(&self) -> Result<Shared<T>, ()> {
+		Shared::from_weak(&self)
 	}
 }
